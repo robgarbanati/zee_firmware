@@ -1,0 +1,3 @@
+Simply flashes lights on the eval board.
+
+// Simply flashes lights on the eval board when there is a sound detected above an arbitary threshold.

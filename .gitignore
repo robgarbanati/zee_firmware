@@ -1,0 +1,17 @@
+#ignore
+*.ted
+*.Rob*
+*_Rob*
+*/F072/*
+*.dep
+*.bak
+*.swp
+*.swo
+*.ini
+*.uvopt
+*.ini
+*.o
+*.d
+*.crf
+*.htm
+*.axf
