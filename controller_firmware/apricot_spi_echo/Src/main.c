@@ -105,7 +105,7 @@ int main(void)
   /* USER CODE BEGIN 3 */
 		
 		HAL_GPIO_TogglePin(LED12_GPIO_Port, LED12_Pin);
-		uint8_t spi_byte[3] = {0xa6, 0x11, 0x05};
+		uint8_t spi_byte[3] = {0xa7, 0x41, 0x05};
 		uint8_t spi_receive[5] = {0x12, 0x34, 0x56, 0x78, 0x00};
 //		HAL_SPI_Transmit(&hspi1, spi_byte, 3, 100);
 		HAL_SPI_TransmitReceive(&hspi1, spi_byte, spi_receive, 3, 100);
