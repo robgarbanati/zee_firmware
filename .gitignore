@@ -15,3 +15,6 @@
 *.crf
 *.htm
 *.axf
+*.bin
+*.hex
+*.map

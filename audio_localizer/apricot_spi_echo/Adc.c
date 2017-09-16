@@ -8,12 +8,28 @@
 #include "Driver/DrvTimer.h"
 #include "Adc.h"
 
-// Contains the most recent microphone sample.
-static INT16 adcSampleMicrophone;
+
+//
+// Global Variables
+//
+
+//
+// Local Variables
+//
+#define ADC_BUF_LENGTH	100
+static int16_t adc_circ_buf[ADC_BUF_LENGTH];
+static volatile uint8_t adc_buf_head = 0;
+static volatile uint8_t adc_buf_tail = 0;
+static volatile int32_t adc_current_sound_level;
+
 
 //
 // Local Functions
 //
+static int16_t abs(int16_t num) {
+	if(num < 0) return -num;
+	else return num;
+}
 
 // wait for a while for ADC value to be stable
 static void SkipAdcUnstableInput(UINT16 u16SkipCount)
@@ -32,11 +48,24 @@ static void SkipAdcUnstableInput(UINT16 u16SkipCount)
 
 void ADC_IRQHandler()
 {
+	int16_t adc_sample;
+
 	// Clear the ADC interrupt flag.
 	DrvADC_ClearAdcIntFlag();
 
-	// Update each of the samples.
-	adcSampleMicrophone = DrvADC_GetConversionDataSigned(0);
+	adc_sample = DrvADC_GetConversionDataSigned(0);
+
+	// Adjust moving average.
+	adc_current_sound_level -= adc_circ_buf[adc_buf_head];
+	adc_circ_buf[adc_buf_head] = abs(adc_sample);
+	
+	// Increment head.
+	adc_buf_head++;
+	if(adc_buf_head == ADC_BUF_LENGTH) adc_buf_head = 0;
+	
+	// Finish updating moving average.
+	adc_current_sound_level += abs(adc_sample);
+	
 //	if(adcSampleMicrophone > 40 || adcSampleMicrophone < -40) {
 //		DrvGPIO_ClearOutputBit(&GPIOB, DRVGPIO_PIN_10);
 //		DrvGPIO_ClearOutputBit(&GPIOB, DRVGPIO_PIN_11);
@@ -48,7 +77,7 @@ void ADC_IRQHandler()
 //		adcSampleMicrophone = -adcSampleMicrophone;
 //		printf("-%x\r\n", adcSampleMicrophone);
 //	} else {
-//		printf("%x\r\n", adcSampleMicrophone);
+//		printf("%d\r\n", adc_current_sound_level/ADC_BUF_LENGTH);
 //	}
 }
 
@@ -96,19 +125,8 @@ void init_ADC(void) {
 }
 
 
-INT16 adcGetMicrophone(void)
-{
-	INT16 result;
-
-	// Disable interrupts.
-	__disable_irq(); 
-
-	// Get the sample.
-	result = adcSampleMicrophone;
-
-	// Enable interrupts.
-	__enable_irq(); 
-
-	return result;
+int16_t adc_get_current_sound_level(void)
+{ 
+	return adc_current_sound_level/ADC_BUF_LENGTH;
 }
 

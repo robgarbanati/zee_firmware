@@ -25,6 +25,11 @@ typedef __packed struct
 #define SPI_MISO_PIN		DRVGPIO_PIN_3
 #define SPI_MOSI_PIN		DRVGPIO_PIN_4
 
+typedef enum spi_state_enum_t {
+	NORMAL,
+	SOUND_VOL_2ND_BYTE
+} spi_state_t;
+
 //
 // Global Functions
 //

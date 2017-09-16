@@ -3,6 +3,7 @@
 #include "Driver/DrvSPI.h"
 #include "Driver/DrvSYS.h"
 #include "Spi.h"
+#include "Adc.h"
 //
 // Global Variables
 //
@@ -11,19 +12,6 @@
 //
 // Local Defines
 //
-
-// SPI master mode for communication with IO Expander.
-#define SPI_MASTER_HANDLER		DRVSPI_SPI0_HANDLER
-#define SPI_MASTER_DEVICE  		eDRVSPI_SLAVE_1
-#define SPI_MASTER_DIVIDER    (_DRVSPI_DIVIDER(DrvCLK_GetHclk(), 100000))
-#define SPI_MASTER_OPEN_FLAGS (DRVSPI_ENDIAN_BIG | \
-																	 DRVSPI_IDEL_CLK_LOW | \
-																	 DRVSPI_MSB_FIRST | \
-																	 DRVSPI_TX_1DATA | \
-																	 DRVSPI_TX_NEGEDGE | \
-																	 DRVSPI_RX_POSEDGE | \
-																	 _DRVSPI_SLEEP(2) | \
-																	 _DRVSPI_DATA_BITS(8))
 
 // SPI slave mode for communication with robot body.
 #define SPI_SLAVE_HANDLER					DRVSPI_SPI1_HANDLER
@@ -34,10 +22,16 @@
 										 DRVSPI_TX_NEGEDGE | \
 										 DRVSPI_RX_POSEDGE | \
 										 _DRVSPI_DATA_BITS(8))
+										 
+#define GET_SOUND	0x03
 
 
-int button1, button2, button3, button4;
-int pwm1, pwm2, pwm3, pwm4;
+
+uint8_t spi_read_buf[20];
+volatile uint8_t spi_buf_head = 0;
+volatile uint8_t spi_buf_tail = 0;
+extern volatile int adc_current_sound_level;
+
 
 //
 // Local Functions
@@ -76,6 +70,7 @@ void spiSlave_Close(void) {
 	// Close the SPI driver.
 	DrvSPI_Close(SPI_SLAVE_HANDLER);
 }
+
 // 
 // write a value of 8 bits to Sway Hoste
 //
@@ -87,141 +82,48 @@ void spiSlave_Write8(UINT8 value)
 	// Initiate the next SPI transaction.
 	DrvSPI_SetGo(SPI_SLAVE_HANDLER);
 }
-//
-// return 8 bits read from spi.
-//
-static UINT8 spiSlave_Read8(void)
-{
-	UINT8 readValue;
 
-	// Read the value shifted out.
-	readValue = (UINT8) DrvSPI_SingleReadData0(SPI_SLAVE_HANDLER);
-
-	return readValue;
+uint8_t first_byte(int16_t num) {
+	return (uint8_t) ((num>>8) & 0xFF);
 }
 
-void SPI1_IRQHandler()
-{
+uint8_t second_byte(int16_t num) {
+	return (uint8_t) (num & 0xFF);
+}
+
+void SPI1_IRQHandler() {
 	uint8_t spi_read_byte;
-	if(DrvSPI_GetIntFlag(DRVSPI_SPI1_HANDLER))
-	{
-		spi_read_byte = DrvSPI_SingleReadData0(SPI_SLAVE_HANDLER);
-		spiSlave_Write8(spi_read_byte);
-		
+	static spi_state_t spi_state = NORMAL;
+	static int16_t current_sound_level;
+	
+	if(DrvSPI_GetIntFlag(DRVSPI_SPI1_HANDLER)) {
+		// Clear interrupt flag.
 		DrvSPI_ClearIntFlag(DRVSPI_SPI1_HANDLER);
-//		SPI1_INT_Flag = 1;
-	}
-}
-
-
-//
-// open spi master driver to talk to CryDetect
-//
-void spiMaster_Init(void) {
-	// Open the SPI driver.
-	DrvSPI_Open(SPI_MASTER_HANDLER, SPI_MASTER_OPEN_FLAGS, SPI_MASTER_DIVIDER);
-
-	// Select the slave.
-	DrvSPI_SlaveSelect(SPI_MASTER_HANDLER, TRUE, DRVSPI_IDEL_CLK_LOW);
-	DrvSPI_SelectSlave(SPI_MASTER_HANDLER, SPI_MASTER_DEVICE);
-
-	// Read/write data in 16 bit chunks.
-	DrvSPI_SetDataConfig(SPI_MASTER_HANDLER, 1, 8);
-}
-
-//
-// close spi master driver
-//
-void spiMaster_Close(void) {
-	// Close the SPI driver.
-	DrvSPI_Close(SPI_MASTER_HANDLER);
-}
-
-//
-// return 8 bits read from spi.
-//
-static UINT8 spiMaster_Read8(void)
-{
-	UINT8 readValue;
-
-	// Read the value shifted out.
-	readValue = (UINT8) DrvSPI_SingleReadData0(SPI_MASTER_HANDLER);
-
-	return readValue;
-}
-
-// 
-// write a value of 8 bits to an address
-//
-void spiMaster_Write8(UINT8 value)
-{
-	// Set the data to shift out of the SPI port.
-	DrvSPI_SingleWriteData0(SPI_MASTER_HANDLER, (UINT32) value);
-	
-	// Initiate the SPI transaction.
-	DrvSPI_SetGo(SPI_MASTER_HANDLER);
-}
-
-
-
-
-//
-// Handle the send/receive of the SPI packets at interrupt time.
-// On the order of 10 to 100 microseconds
-//
-void spiHeadHandler(void)
-{
-	UINT8 index = 0;
-	UINT8 sendData[SPI_BUF_LENGTH];
-	UINT8 spiSlave_Data[SPI_BUF_LENGTH];
-	UINT8 spiMaster_Data[SPI_BUF_LENGTH];
-
-	// Assume we receive a zero length packet.
-	spiSlave_Data[0] = 0;
-	spiMaster_Data[0] = 0;
-
-	// Send/receive bytes until the SPI CS pin is raised.
-	while (!DrvGPIO_GetInputPinValue(&SPI_GPIO_PORT, SPI_CS_PIN))
-	{
-		// Wait while the SPI ports are busy and the SPI CS line is low.
-		while (DrvSPI_GetBusy(SPI_SLAVE_HANDLER) && !DrvGPIO_GetInputPinValue(&SPI_GPIO_PORT, SPI_CS_PIN));  // && DrvSPI_GetBusy(SPI_MASTER_HANDLER)
-
-		// Process the next byte if the SPI CS line is still low.
-		if (!DrvGPIO_GetInputPinValue(&SPI_GPIO_PORT, SPI_CS_PIN))
-		{
-			// Read the value shifted in.
-			spiSlave_Data[index] = (UINT8) DrvSPI_SingleReadData0(SPI_SLAVE_HANDLER);
-			spiMaster_Data[index] = (UINT8) DrvSPI_SingleReadData0(SPI_MASTER_HANDLER);
 		
-//			// Set the data to shift out.
-//			spiSlave_Write8(spiMaster_Data[index]);
-//			spiMaster_Write8(spiSlave_Data[index]);
-			
-//			// mirror mode
-//			spiSlave_Write8(spiSlave_Data[index]);
-//			spiMaster_Write8(spiMaster_Data[index]);
-			
-			// constant mode
-			spiSlave_Write8(0xC3);
-			spiMaster_Write8(0x42);
-
-			// Increment the index, but prevent overflow.
-			if (index < SPI_BUF_LENGTH) ++index;
+		// Read incoming byte.
+		spi_read_byte = DrvSPI_SingleReadData0(SPI_SLAVE_HANDLER);
+		
+		// Write a response based on state and incoming message.
+		switch(spi_state) {
+			case SOUND_VOL_2ND_BYTE:
+				spiSlave_Write8(second_byte(current_sound_level));
+				spi_state = NORMAL;
+				break;
+			case NORMAL:
+			default:
+				if(spi_read_byte == GET_SOUND) {
+					current_sound_level = adc_get_current_sound_level();
+					spiSlave_Write8(first_byte(current_sound_level));
+					spi_state = SOUND_VOL_2ND_BYTE;
+				} else {
+					spiSlave_Write8(spi_read_byte);
+				}
+				break;
 		}
+		
+		// Log received bytes to be printed out later.
+		spi_read_buf[spi_buf_tail++] = spi_read_byte;
+		if(spi_buf_tail == 20) spi_buf_tail = 0;
 	}
-
-	// Zero the length of the send packet to indicate it has been sent.
-	sendData[0] = 0;
-
-	// Initialize the first zero status byte to shift out on the next packet.
-	spiSlave_Write8(spiMaster_Data[index-1]);
-	spiMaster_Write8(spiSlave_Data[index-1]);
-
-//	// mirror mode
-//	spiSlave_Write8(spiSlave_Data[index-1]);
-//	spiMaster_Write8(spiMaster_Data[index]);
-	
-//	// constant mode
-//	spiSlave_Write8(0xF0);
-//	spiMaster_Write8(0xBF);
 }
+

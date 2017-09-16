@@ -23,7 +23,7 @@
 // Init functions.
 void init_ADC(void);
 void start_ADC(void);
-INT16 adcGetMicrophone(void);
+int16_t adc_get_current_sound_level(void);
 
 #endif // __ADC_H
 

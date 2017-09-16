@@ -48,6 +48,13 @@ SPI_HandleTypeDef hspi1;
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
+#define SOUND_THRESHOLD	0xC0
+static uint8_t sound_threshold = SOUND_THRESHOLD;
+uint8_t set_threshold_tx_buf[] = {0x01, SOUND_THRESHOLD};
+uint8_t toggle_sound_detection_tx_buf[] = {0x02, 0x01};
+uint8_t get_sound_level_tx_buf[] = {0x03, 0x00, 0x00};
+uint8_t clear_interrupt_buf[] = {0x04, 0x00};
+uint8_t spi_rx_buf[] = {0x00, 0x00, 0x00};
 
 /* USER CODE END PV */
 
@@ -103,26 +110,25 @@ int main(void)
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
+		int sound_level;
+//		HAL_GPIO_TogglePin(LED12_GPIO_Port, LED12_Pin);
 		
-		HAL_GPIO_TogglePin(LED12_GPIO_Port, LED12_Pin);
-		uint8_t spi_byte[3] = {0xa7, 0x41, 0x05};
-		uint8_t spi_receive[5] = {0x12, 0x34, 0x56, 0x78, 0x00};
-//		HAL_SPI_Transmit(&hspi1, spi_byte, 3, 100);
-		HAL_SPI_TransmitReceive(&hspi1, spi_byte, spi_receive, 3, 100);
+//		HAL_SPI_TransmitReceive(&hspi1, set_threshold_tx_buf, spi_rx_buf, 2, 100);
+//		HAL_Delay(500);
+//		
+//		HAL_SPI_TransmitReceive(&hspi1, toggle_sound_detection_tx_buf, spi_rx_buf, 2, 100);
+//		HAL_Delay(500);
+		
+		HAL_SPI_TransmitReceive(&hspi1, get_sound_level_tx_buf, spi_rx_buf, 3, 100);
+		sound_level = (int16_t) (spi_rx_buf[1]<<8) + (int16_t) spi_rx_buf[2];
+//		printf("sound level is %d\n", sound_level);
+		if(sound_level>sound_threshold) HAL_GPIO_WritePin(LED12_GPIO_Port, LED12_Pin, GPIO_PIN_SET);
+		else HAL_GPIO_WritePin(LED12_GPIO_Port, LED12_Pin, GPIO_PIN_RESET);
 		HAL_Delay(100);
 		
-//		HAL_GPIO_TogglePin(LED3_GPIO_Port, LED3_Pin);
-//		/* Insert delay 100 ms */
-//		HAL_Delay(100);
-//		HAL_GPIO_TogglePin(LED4_GPIO_Port, LED4_Pin);
-//		/* Insert delay 100 ms */
-//		HAL_Delay(100);
-//		HAL_GPIO_TogglePin(LED6_GPIO_Port, LED6_Pin);
-//		/* Insert delay 100 ms */
-//		HAL_Delay(100);
-//		HAL_GPIO_TogglePin(LED5_GPIO_Port, LED5_Pin);
-//		/* Insert delay 100 ms */
-//		HAL_Delay(100);
+//		HAL_SPI_TransmitReceive(&hspi1, clear_interrupt_buf, spi_rx_buf, 2, 100);
+//		HAL_Delay(500);
+		
 	}
   /* USER CODE END 3 */
 
