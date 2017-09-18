@@ -3,6 +3,7 @@
 ".\f072\debug\main.o"
 ".\f072\debug\adc.o"
 ".\f072\debug\spi.o"
+".\f072\debug\led.o"
 ".\f072\debug\startup_n572_keil.o"
 ".\f072\debug\core_cm0.o"
 --strict --scatter ".\EVB_sound_threshold_lights_LED_F072_Keil.ld"

@@ -27,7 +27,9 @@ typedef __packed struct
 
 typedef enum spi_state_enum_t {
 	NORMAL,
-	SOUND_VOL_2ND_BYTE
+	SOUND_VOL_2ND_BYTE,
+	READ_THRESHOLD,
+	READ_DETECTION_BOOL
 } spi_state_t;
 
 //

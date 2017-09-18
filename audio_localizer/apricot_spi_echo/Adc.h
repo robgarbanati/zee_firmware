@@ -24,6 +24,8 @@
 void init_ADC(void);
 void start_ADC(void);
 int16_t adc_get_current_sound_level(void);
+void adc_set_sound_threshold(uint8_t threshold);
+void adc_toggle_sound_detection(uint8_t command);
 
 #endif // __ADC_H
 

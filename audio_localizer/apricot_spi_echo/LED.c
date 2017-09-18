@@ -1,0 +1,37 @@
+#include "LED.h"
+
+typedef enum LED_state_enum_t {
+	OFF,
+	LOW,
+	ON
+} LED_state_t;
+
+LED_state_t LED_state = LOW;
+
+void LED_turn_off(void) {
+	LED_state = OFF;
+}
+
+void LED_set_low(void) {
+	LED_state = LOW;
+}
+
+void LED_turn_on(void) {
+	LED_state = ON;
+}
+
+void LED_blink(void) {
+	// Blink LEDs.
+	for (;;) {
+		if(LED_state == ON) {
+			DrvGPIO_ClearOutputBit(&GPIOB, DRVGPIO_PIN_8);
+		} else if(LED_state == LOW) {
+			DrvGPIO_ClearOutputBit(&GPIOB, DRVGPIO_PIN_8);
+			DrvTimer_WaitMillisecondTmr2(1);
+			DrvGPIO_SetOutputBit(&GPIOB, DRVGPIO_PIN_8);
+			DrvTimer_WaitMillisecondTmr2(20);
+		} else {
+			DrvGPIO_SetOutputBit(&GPIOB, DRVGPIO_PIN_8);
+		}
+	}
+}

@@ -7,11 +7,12 @@
 #include "Driver/DrvGPIO.h"
 #include "Driver/DrvTimer.h"
 #include "Adc.h"
-
+#include "LED.h"
 
 //
 // Global Variables
 //
+extern volatile uint8_t brighten_LED;
 
 //
 // Local Variables
@@ -21,6 +22,7 @@ static int16_t adc_circ_buf[ADC_BUF_LENGTH];
 static volatile uint8_t adc_buf_head = 0;
 static volatile uint8_t adc_buf_tail = 0;
 static volatile int32_t adc_current_sound_level;
+static uint8_t sound_threshold;
 
 
 //
@@ -45,6 +47,26 @@ static void SkipAdcUnstableInput(UINT16 u16SkipCount)
 	}
 }
 
+void turn_on_sound_detection(void) {
+}
+
+void turn_off_sound_detection(void) {
+}
+
+void adc_set_sound_threshold(uint8_t threshold) {
+	sound_threshold = threshold;
+}
+
+void adc_toggle_sound_detection(uint8_t command) {
+	if(command == 1) {
+		start_ADC();
+		LED_set_low();
+	} else {
+		DrvADC_StopConvert();
+		LED_turn_off();
+	}
+}
+
 
 void ADC_IRQHandler()
 {
@@ -65,6 +87,11 @@ void ADC_IRQHandler()
 	
 	// Finish updating moving average.
 	adc_current_sound_level += abs(adc_sample);
+	
+	// Did the sound average go above sound_threshold?
+	if(adc_current_sound_level/ADC_BUF_LENGTH > sound_threshold) {
+		LED_turn_on();
+	}
 	
 //	if(adcSampleMicrophone > 40 || adcSampleMicrophone < -40) {
 //		DrvGPIO_ClearOutputBit(&GPIOB, DRVGPIO_PIN_10);
@@ -114,13 +141,15 @@ void init_ADC(void) {
 	DrvADC_StartConvert();
 	DrvADC_AnalysisAdcCalibration();
 	DrvADC_StopConvert();
+	
+	adc_set_sound_threshold(0x80);
 }
 
 // Start to record.
  void start_ADC(void)
 {
 	 DrvADC_StartConvert();				// start convert
-	 SkipAdcUnstableInput(1280);			// skip 128 * 8 samples
+	 SkipAdcUnstableInput(1280);		// skip 128 * 8 samples
 	 DrvADC_EnableAdcInt();				//enable ADC interrupt
 }
 

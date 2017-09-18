@@ -9,10 +9,13 @@
 #include "SysClkConfig.h"
 #include "Spi.h"
 #include "Adc.h"
+#include "LED.h"
 
 extern uint8_t spi_read_buf[20];
 extern volatile uint8_t spi_buf_head;
 extern volatile uint8_t spi_buf_tail;
+
+
 
 //void GPAB_IRQHandler(void)
 //{
@@ -29,15 +32,15 @@ extern volatile uint8_t spi_buf_tail;
 
 // Init ADC clock
 void adcClockInit() {
-	UINT32	u32HCLK = 0,u32ADCClk = 0;
-	INT32 adc_clk_freq;
+//	UINT32	u32HCLK = 0,u32ADCClk = 0;
+//	INT32 adc_clk_freq;
 	
 	DrvCLK_SetClkSrcAdc(eDRVCLK_ADCSRC_48M);
 	
 	DrvCLK_SetClkDividerAdc(430);//ADC_CLOCK_FREQUENCY);  // == sampling_frequency*25
 	
-	u32HCLK = DrvCLK_GetHclk();
-	u32ADCClk = DrvCLK_GetClkAdc();
+//	u32HCLK = DrvCLK_GetHclk();
+//	u32ADCClk = DrvCLK_GetClkAdc();
 
 	
 //	//The ADC engine clock must meet the constraint: ADCLK <=  HCKL/2.
@@ -107,7 +110,6 @@ void gpioInit(void) {
 	DrvGPIO_ClearOutputBit(&GPIOB, DRVGPIO_PIN_8);
 }
 
-
 // Main thread.
 int main (void) {
 	int i =0;
@@ -117,14 +119,8 @@ int main (void) {
 	// Initialize GPIO.
 	gpioInit();
 	
-	init_ADC();
-	start_ADC();
-//	puts("got past start_adc\r\n");
-	
-	spiSlave_Init();
-	
 	// Blink LEDs.
-	for (;;) {
+	for (i=0;i<3;i++) {
 		DrvGPIO_ClearOutputBit(&GPIOB, DRVGPIO_PIN_8);
 		DrvTimer_WaitMillisecondTmr2(100);
 		DrvGPIO_SetOutputBit(&GPIOB, DRVGPIO_PIN_8);
@@ -133,6 +129,21 @@ int main (void) {
 //			printf("%d\n", spi_read_buf[spi_buf_head++]);
 //			if(spi_buf_head == 20) spi_buf_head = 0;
 //		}
-	}	
+	}
+	
+	init_ADC();
+	start_ADC();
+//	puts("got past start_adc\r\n");
+	
+	spiSlave_Init();
+	
+	LED_set_low();
+	
+	LED_blink();
+	
+//		while(spi_buf_head != spi_buf_tail) {
+//			printf("%d\n", spi_read_buf[spi_buf_head++]);
+//			if(spi_buf_head == 20) spi_buf_head = 0;
+//		}
 }
 

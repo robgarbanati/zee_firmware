@@ -48,7 +48,7 @@ SPI_HandleTypeDef hspi1;
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
-#define SOUND_THRESHOLD	0xC0
+#define SOUND_THRESHOLD	0x40
 static uint8_t sound_threshold = SOUND_THRESHOLD;
 uint8_t set_threshold_tx_buf[] = {0x01, SOUND_THRESHOLD};
 uint8_t toggle_sound_detection_tx_buf[] = {0x02, 0x01};
@@ -120,14 +120,17 @@ int main(void)
 //		HAL_Delay(500);
 		
 		HAL_SPI_TransmitReceive(&hspi1, get_sound_level_tx_buf, spi_rx_buf, 3, 100);
-		sound_level = (int16_t) (spi_rx_buf[1]<<8) + (int16_t) spi_rx_buf[2];
-//		printf("sound level is %d\n", sound_level);
-		if(sound_level>sound_threshold) HAL_GPIO_WritePin(LED12_GPIO_Port, LED12_Pin, GPIO_PIN_SET);
-		else HAL_GPIO_WritePin(LED12_GPIO_Port, LED12_Pin, GPIO_PIN_RESET);
 		HAL_Delay(100);
 		
-//		HAL_SPI_TransmitReceive(&hspi1, clear_interrupt_buf, spi_rx_buf, 2, 100);
-//		HAL_Delay(500);
+		sound_level = (int16_t) (spi_rx_buf[1]<<8) + (int16_t) spi_rx_buf[2];
+//		printf("sound level is %d\n", sound_level);
+		if(sound_level>sound_threshold) {
+			HAL_GPIO_WritePin(LED12_GPIO_Port, LED12_Pin, GPIO_PIN_SET);
+		} else {
+			HAL_GPIO_WritePin(LED12_GPIO_Port, LED12_Pin, GPIO_PIN_RESET);
+//			HAL_SPI_TransmitReceive(&hspi1, clear_interrupt_buf, spi_rx_buf, 2, 100);
+		}
+		HAL_Delay(100);
 		
 	}
   /* USER CODE END 3 */
