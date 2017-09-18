@@ -40,8 +40,8 @@
 #include "stm32f4xx_hal.h"
 
 /* USER CODE BEGIN Includes */
-#define 	SET_THRESHOLD_DEMO		0
-#define 	TOGGLE_DETECTION_DEMO	1
+#define 	SET_THRESHOLD_DEMO		1
+#define 	TOGGLE_DETECTION_DEMO	0
 #define 	RECEIVE_THRESHOLD_DEMO	0
 #define 	INTERRUPT_LINE_DEMO		0
 
@@ -104,6 +104,12 @@ int main(void)
   MX_SPI1_Init();
 
   /* USER CODE BEGIN 2 */
+	toggle_sound_detection_tx_buf[1] = 1;
+	HAL_SPI_TransmitReceive(&hspi1, toggle_sound_detection_tx_buf, spi_rx_buf, 2, 100);
+	HAL_Delay(100);
+	set_threshold_tx_buf[1] = 0x10;
+	HAL_SPI_TransmitReceive(&hspi1, set_threshold_tx_buf, spi_rx_buf, 2, 100);
+	HAL_Delay(100);
 
   /* USER CODE END 2 */
 
@@ -115,11 +121,10 @@ int main(void)
 
   /* USER CODE BEGIN 3 */
 		int sound_level;
-//		HAL_GPIO_TogglePin(LED12_GPIO_Port, LED12_Pin);
 
 #if SET_THRESHOLD_DEMO == 1
 		// Set the value in the following line to any value from 0x00 to 0xff and watch the threshold change on the n572.
-		set_threshold_tx_buf[1] = 0x80;
+		set_threshold_tx_buf[1] = 0xff;
 		HAL_SPI_TransmitReceive(&hspi1, set_threshold_tx_buf, spi_rx_buf, 2, 100);
 		HAL_Delay(500);
 		

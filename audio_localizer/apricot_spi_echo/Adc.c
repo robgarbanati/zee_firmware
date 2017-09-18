@@ -8,7 +8,7 @@ static int16_t adc_circ_buf[ADC_BUF_LENGTH];
 static volatile uint8_t adc_buf_head = 0;
 static volatile uint8_t adc_buf_tail = 0;
 static volatile int32_t adc_current_sound_level;
-static uint8_t sound_threshold;
+static uint16_t sound_threshold = 0x40;
 
 //
 // Local Functions
@@ -96,9 +96,6 @@ void Sound_Detect_init(void) {
 	DrvADC_StartConvert();
 	DrvADC_AnalysisAdcCalibration();
 	DrvADC_StopConvert();
-
-	// Set sound detection threshold.
-	Sound_Detect_set_threshold(0x40);
 }
 
 // Start ADC and enable interrupt.
