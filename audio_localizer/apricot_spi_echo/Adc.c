@@ -93,13 +93,6 @@ void ADC_IRQHandler()
 		LED_turn_on();
 	}
 	
-//	if(adcSampleMicrophone > 40 || adcSampleMicrophone < -40) {
-//		DrvGPIO_ClearOutputBit(&GPIOB, DRVGPIO_PIN_10);
-//		DrvGPIO_ClearOutputBit(&GPIOB, DRVGPIO_PIN_11);
-//	} else { 
-//		DrvGPIO_SetOutputBit(&GPIOB, DRVGPIO_PIN_10);
-//		DrvGPIO_SetOutputBit(&GPIOB, DRVGPIO_PIN_11);
-//	}
 //	if(adcSampleMicrophone < 0) {
 //		adcSampleMicrophone = -adcSampleMicrophone;
 //		printf("-%x\r\n", adcSampleMicrophone);
@@ -157,5 +150,15 @@ void init_ADC(void) {
 int16_t adc_get_current_sound_level(void)
 { 
 	return adc_current_sound_level/ADC_BUF_LENGTH;
+}
+
+void ADC_reset_moving_average(void) {
+	int i;
+	DrvADC_StopConvert();
+	for(i=0;i<ADC_BUF_LENGTH;i++) {
+		adc_circ_buf[i] = 0;
+	}
+	adc_current_sound_level = 0;
+	start_ADC();
 }
 

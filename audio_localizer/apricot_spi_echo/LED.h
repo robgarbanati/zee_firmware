@@ -19,4 +19,6 @@ void LED_turn_on(void);
 
 void LED_blink(void);
 
+void LED_blink_for_half_second(void);
+
 #endif // __LED_H

@@ -96,6 +96,8 @@ uint8_t second_byte(int16_t num) {
 //}
 
 void spi_clear_interrupt_line(void) {
+	ADC_reset_moving_average();
+	LED_blink_for_half_second();
 	LED_set_low();  // TODO slight bug if detection is off. 
 }
 

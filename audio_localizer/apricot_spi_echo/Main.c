@@ -119,17 +119,7 @@ int main (void) {
 	// Initialize GPIO.
 	gpioInit();
 	
-	// Blink LEDs.
-	for (i=0;i<3;i++) {
-		DrvGPIO_ClearOutputBit(&GPIOB, DRVGPIO_PIN_8);
-		DrvTimer_WaitMillisecondTmr2(100);
-		DrvGPIO_SetOutputBit(&GPIOB, DRVGPIO_PIN_8);
-		DrvTimer_WaitMillisecondTmr2(100);
-//		while(spi_buf_head != spi_buf_tail) {
-//			printf("%d\n", spi_read_buf[spi_buf_head++]);
-//			if(spi_buf_head == 20) spi_buf_head = 0;
-//		}
-	}
+	LED_blink_for_half_second();
 	
 	init_ADC();
 	start_ADC();
