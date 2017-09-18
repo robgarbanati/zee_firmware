@@ -61,6 +61,7 @@ void ADC_IRQHandler() {
 	if(adc_current_sound_level/ADC_BUF_LENGTH > sound_threshold) {
 		// Indicate sound above threshold.
 		LED_turn_on();
+		DrvGPIO_SetOutputBit(&GPIOB, DRVGPIO_PIN_12);
 	} else {
 		// Indicate sound below threshold.
 		LED_set_low();

@@ -59,8 +59,11 @@ static void init_gpio(void) {
 									DRVSYS_GPIOB_MF4_SPI1_DATA_OUT
 	);
 	
-	// Configure LED pin.
-	DrvGPIO_SetIOMode(&GPIOB, DRVGPIO_IOMODE_PIN8_OUT); 
+	// Configure GPIO B pins.
+	DrvGPIO_SetIOMode(&GPIOB, 
+						DRVGPIO_IOMODE_PIN8_OUT |	// LED
+						DRVGPIO_IOMODE_PIN12_OUT	// Sound Threshold Pin
+	); 
 }
 
 

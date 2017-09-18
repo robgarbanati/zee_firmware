@@ -150,6 +150,7 @@ int main(void)
 		HAL_Delay(100);
 
 #elif INTERRUPT_LINE_DEMO == 1
+		HAL_GPIO_WritePin(LED12_GPIO_Port, LED12_Pin, GPIO_PIN_SET);
 		HAL_SPI_TransmitReceive(&hspi1, get_sound_level_tx_buf, spi_rx_buf, 3, 100);
 		HAL_Delay(100);
 #endif

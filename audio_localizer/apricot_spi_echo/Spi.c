@@ -75,7 +75,8 @@ void SPI_write_byte(uint8_t value) {
 }
 
 void SPI_clear_interrupt_line(void) {
-	// TODO actually toggle correct GPIO.
+	// Turn off sound detected pin.
+	DrvGPIO_ClearOutputBit(&GPIOB, DRVGPIO_PIN_12);
 	Sound_Detect_reset_moving_average();
 	LED_blink_for_half_second();
 }
