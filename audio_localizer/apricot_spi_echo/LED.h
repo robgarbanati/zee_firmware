@@ -10,15 +10,10 @@
 #include "Driver/DrvSPI.h"
 #include "Driver/DrvTimer.h"
 
-
 void LED_turn_off(void);
-
 void LED_set_low(void);
-
 void LED_turn_on(void);
-
-void LED_blink(void);
-
+void LED_loop(void);
 void LED_blink_for_half_second(void);
 
 #endif // __LED_H

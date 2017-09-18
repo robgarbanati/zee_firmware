@@ -1,32 +1,21 @@
 #ifndef __ADC_H
 #define __ADC_H
 
+#include <stdio.h>
+#include <string.h>
+#include "Driver/DrvADC.h"
+#include "Driver/DrvCLK.h"
+#include "Driver/DrvSYS.h"
+#include "Driver/DrvGPIO.h"
+#include "Driver/DrvTimer.h"
 #include "Platform.h"
+#include "LED.h"
 
-//
-// Global Defines and Declarations
-//
-
-#define ADC_CLK_SOURCE				eDRVCLK_ADCSRC_48M
-#define ADC_PAG_GAIN1					DRVADC_PAG1_30DB
-#define ADC_PAG_GAIN2					DRVADC_PAG2_20DB
-
-// We want to sample one channel every 10 milliseonds.  Therefore the
-// sample rate is 100 samples per second.
-#define ADC_SAMPLE_RATE				100
-#define ADC_CLK_DIVIDER				(DrvCLK_GetSrcClkAdc() / 25 / (ADC_SAMPLE_RATE - 1))
-
-//
-// Global Functions
-//
-
-// Init functions.
-void init_ADC(void);
-void start_ADC(void);
-int16_t adc_get_current_sound_level(void);
-void adc_set_sound_threshold(uint8_t threshold);
-void adc_toggle_sound_detection(uint8_t command);
+void Sound_Detect_set_threshold(uint8_t threshold);
+void Sound_Detect_init(void);
+void Sound_Detect_start(void);
+void Sound_Detect_stop(void);
+int16_t Sound_Detect_get_current_sound_level(void);
+void Sound_Detect_reset_moving_average(void);
 
 #endif // __ADC_H
-
-

@@ -1,10 +1,4 @@
-#include <string.h>
-#include "Driver/DrvGPIO.h"
-#include "Driver/DrvSPI.h"
-#include "Driver/DrvSYS.h"
 #include "Spi.h"
-#include "Adc.h"
-#include "LED.h"
 
 //
 // Global Variables
@@ -19,14 +13,14 @@ extern volatile int adc_current_sound_level;
 //
 
 // SPI slave mode for communication with robot body.
-#define SPI_SLAVE_HANDLER					DRVSPI_SPI1_HANDLER
-#define SPI_SLAVE_DIVIDER     			(_DRVSPI_DIVIDER(DrvCLK_GetHclk(), 8000000))
-#define SPI_SLAVE_OPEN_FLAGS 			(DRVSPI_ENDIAN_BIG | \
-										 DRVSPI_MSB_FIRST | \
-										 DRVSPI_TX_1DATA | \
-										 DRVSPI_TX_NEGEDGE | \
-										 DRVSPI_RX_POSEDGE | \
-										 _DRVSPI_DATA_BITS(8))
+#define SPI_HANDLER				DRVSPI_SPI1_HANDLER
+#define SPI_DIVIDER     		(_DRVSPI_DIVIDER(DrvCLK_GetHclk(), 8000000))
+#define SPI_OPEN_FLAGS 			(DRVSPI_ENDIAN_BIG | \
+								 DRVSPI_MSB_FIRST | \
+								 DRVSPI_TX_1DATA | \
+								 DRVSPI_TX_NEGEDGE | \
+								 DRVSPI_RX_POSEDGE | \
+								 _DRVSPI_DATA_BITS(8))
 
 #define SET_THRESHOLD_CMD		0x01
 #define TOGGLE_DETECTION_CMD	0x02
@@ -34,19 +28,26 @@ extern volatile int adc_current_sound_level;
 #define CLEAR_INTERRUPT_CMD		0x04
 
 
-
-
 //
 // Local Functions
 //
 
+static uint8_t first_byte(int16_t num) {
+	return (uint8_t) ((num>>8) & 0xFF);
+}
+
+static uint8_t second_byte(int16_t num) {
+	return (uint8_t) (num & 0xFF);
+}
+
 //
-// open spi slave driver to talk to Sway Host
+// Global Functions
 //
-void spiSlave_Init(void)
-{
+
+// Enable SPI1 peripheral as a slave and enable SPI1 interrupts.
+void SPI_init(void) {
 	// Open the SPI driver.
-	DrvSPI_Open(SPI_SLAVE_HANDLER, SPI_SLAVE_OPEN_FLAGS, SPI_SLAVE_DIVIDER);
+	DrvSPI_Open(SPI_HANDLER, SPI_OPEN_FLAGS, SPI_DIVIDER);
 
 	// Configure for slave mode.
 	DrvSPI_SPI1_SetSlaveMode(TRUE);
@@ -54,51 +55,29 @@ void spiSlave_Init(void)
 	// Level trigger for slave mode.
 	DrvSPI_SPI1_LevelTriggerInSlave(TRUE);
 
-	// Set the zero status byte to shift out.
-	DrvSPI_SingleWriteData0(SPI_SLAVE_HANDLER, (UINT32) 0xa6);
+	// Set a silly initial byte for debugging purposes.
+	DrvSPI_SingleWriteData0(SPI_HANDLER, (uint32_t) 0xa6);
 
 	// Initiate the SPI transaction.
-	DrvSPI_SetGo(SPI_SLAVE_HANDLER);
+	DrvSPI_SetGo(SPI_HANDLER);
 	
 	// Enable the SPI interrupt
-	DrvSPI_EnableInt(SPI_SLAVE_HANDLER);
-}
-//
-// close spi slave driver
-//
-void spiSlave_Close(void) {
-	// Close the SPI driver.
-	DrvSPI_Close(SPI_SLAVE_HANDLER);
+	DrvSPI_EnableInt(SPI_HANDLER);
 }
 
-// 
-// write a value of 8 bits to Sway Hoste
-//
-void spiSlave_Write8(UINT8 value)
-{
-	// Set the data to shift out.
-	DrvSPI_SingleWriteData0(SPI_SLAVE_HANDLER, (UINT32) value);
+// Write a byte to SPI1 peripheral. It will be sent in the next transaction.
+void SPI_write_byte(uint8_t value) {
+	// Write a byte to SPI1 peripheral.
+	DrvSPI_SingleWriteData0(SPI_HANDLER, (uint32_t) value);
 
 	// Initiate the next SPI transaction.
-	DrvSPI_SetGo(SPI_SLAVE_HANDLER);
+	DrvSPI_SetGo(SPI_HANDLER);
 }
 
-uint8_t first_byte(int16_t num) {
-	return (uint8_t) ((num>>8) & 0xFF);
-}
-
-uint8_t second_byte(int16_t num) {
-	return (uint8_t) (num & 0xFF);
-}
-
-//uint8_t spi_get_sound_threshold(void) {
-//	return sound_threshold;
-//}
-
-void spi_clear_interrupt_line(void) {
-	ADC_reset_moving_average();
+void SPI_clear_interrupt_line(void) {
+	// TODO actually toggle correct GPIO.
+	Sound_Detect_reset_moving_average();
 	LED_blink_for_half_second();
-	LED_set_low();  // TODO slight bug if detection is off. 
 }
 
 void SPI1_IRQHandler() {
@@ -111,48 +90,52 @@ void SPI1_IRQHandler() {
 		DrvSPI_ClearIntFlag(DRVSPI_SPI1_HANDLER);
 		
 		// Read incoming byte.
-		spi_read_byte = DrvSPI_SingleReadData0(SPI_SLAVE_HANDLER);
+		spi_read_byte = DrvSPI_SingleReadData0(SPI_HANDLER);
 		
 		// Write a response based on state and incoming message.
 		switch(spi_state) {
 			case SOUND_VOL_2ND_BYTE:
-				spiSlave_Write8(second_byte(current_sound_level));
+				SPI_write_byte(second_byte(current_sound_level));
 				spi_state = NORMAL;
 				break;
 			case READ_THRESHOLD:
-				adc_set_sound_threshold(spi_read_byte);
+				Sound_Detect_set_threshold(spi_read_byte);
 				spi_state = NORMAL;
-				spiSlave_Write8(spi_read_byte);
+				SPI_write_byte(spi_read_byte);
 				break;
 			case READ_DETECTION_BOOL:
-				adc_toggle_sound_detection(spi_read_byte);
+				if(spi_read_byte == 1) {
+					Sound_Detect_start();
+				} else {
+					Sound_Detect_stop();
+				}
 				spi_state = NORMAL;
-				spiSlave_Write8(spi_read_byte);
+				SPI_write_byte(spi_read_byte);
 				break;
 			case NORMAL:
 			default:
 				switch(spi_read_byte) {
 					case GET_SOUND_CMD:
-						current_sound_level = adc_get_current_sound_level();
-						spiSlave_Write8(first_byte(current_sound_level));
+						current_sound_level = Sound_Detect_get_current_sound_level();
+						SPI_write_byte(first_byte(current_sound_level));
 						spi_state = SOUND_VOL_2ND_BYTE;
 						break;
 					case SET_THRESHOLD_CMD:
-						current_sound_level = adc_get_current_sound_level();
+						current_sound_level = Sound_Detect_get_current_sound_level();
 						spi_state = READ_THRESHOLD;
-						spiSlave_Write8(spi_read_byte);
+						SPI_write_byte(spi_read_byte);
 						break;
 					case TOGGLE_DETECTION_CMD:
-						current_sound_level = adc_get_current_sound_level();
+						current_sound_level = Sound_Detect_get_current_sound_level();
 						spi_state = READ_DETECTION_BOOL;
-						spiSlave_Write8(spi_read_byte);
+						SPI_write_byte(spi_read_byte);
 						break;
 					case CLEAR_INTERRUPT_CMD:
-						spi_clear_interrupt_line();
-						spiSlave_Write8(spi_read_byte);
+						SPI_clear_interrupt_line();
+						SPI_write_byte(spi_read_byte);
 						break;
 					default:
-						spiSlave_Write8(spi_read_byte);
+						SPI_write_byte(spi_read_byte);
 						spi_state = NORMAL;
 						break;
 				}
@@ -164,4 +147,3 @@ void SPI1_IRQHandler() {
 		if(spi_buf_tail == 20) spi_buf_tail = 0;
 	}
 }
-

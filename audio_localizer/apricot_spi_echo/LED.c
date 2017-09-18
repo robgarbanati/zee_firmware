@@ -20,8 +20,8 @@ void LED_turn_on(void) {
 	LED_state = ON;
 }
 
-void LED_blink(void) {
-	// Blink LEDs.
+// Set LED brightness based on LED_state.
+void LED_loop(void) {
 	for (;;) {
 		if(LED_state == ON) {
 			DrvGPIO_ClearOutputBit(&GPIOB, DRVGPIO_PIN_8);
@@ -38,7 +38,6 @@ void LED_blink(void) {
 
 void LED_blink_for_half_second(void) {
 	int i;
-	// Blink LEDs.
 	for (i=0;i<5;i++) {
 			DrvGPIO_ClearOutputBit(&GPIOB, DRVGPIO_PIN_8);
 			DrvTimer_WaitMillisecondTmr2(50);

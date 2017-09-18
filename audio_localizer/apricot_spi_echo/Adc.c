@@ -1,18 +1,4 @@
-#include <stdio.h>
-#include <string.h>
-//#include "cmsis_os.h"
-#include "Driver/DrvADC.h"
-#include "Driver/DrvCLK.h"
-#include "Driver/DrvSYS.h"
-#include "Driver/DrvGPIO.h"
-#include "Driver/DrvTimer.h"
 #include "Adc.h"
-#include "LED.h"
-
-//
-// Global Variables
-//
-extern volatile uint8_t brighten_LED;
 
 //
 // Local Variables
@@ -24,7 +10,6 @@ static volatile uint8_t adc_buf_tail = 0;
 static volatile int32_t adc_current_sound_level;
 static uint8_t sound_threshold;
 
-
 //
 // Local Functions
 //
@@ -33,43 +18,25 @@ static int16_t abs(int16_t num) {
 	else return num;
 }
 
-// wait for a while for ADC value to be stable
-static void SkipAdcUnstableInput(UINT16 u16SkipCount)
-{
-	UINT16 i;
-	for(i = 0 ; i < u16SkipCount; )
-	{
-		if (DrvADC_GetAdcIntFlag())
-		{
+// Wait for a while for ADC value to be stable.
+static void ADC_skip_some_samples(uint16_t samples_to_skip) {
+	int i;
+	for(i=0;i<samples_to_skip;i++) {
+		if (DrvADC_GetAdcIntFlag()) {
 			DrvADC_ClearAdcIntFlag();
-			i++;
 		}
 	}
 }
 
-void turn_on_sound_detection(void) {
-}
+//
+// Global Functions
+//
 
-void turn_off_sound_detection(void) {
-}
-
-void adc_set_sound_threshold(uint8_t threshold) {
+void Sound_Detect_set_threshold(uint8_t threshold) {
 	sound_threshold = threshold;
 }
 
-void adc_toggle_sound_detection(uint8_t command) {
-	if(command == 1) {
-		start_ADC();
-		LED_set_low();
-	} else {
-		DrvADC_StopConvert();
-		LED_turn_off();
-	}
-}
-
-
-void ADC_IRQHandler()
-{
+void ADC_IRQHandler() {
 	int16_t adc_sample;
 
 	// Clear the ADC interrupt flag.
@@ -77,8 +44,10 @@ void ADC_IRQHandler()
 
 	adc_sample = DrvADC_GetConversionDataSigned(0);
 
-	// Adjust moving average.
+	// Remove oldest sample from moving average.
 	adc_current_sound_level -= adc_circ_buf[adc_buf_head];
+	
+	// Add new sample to adc_circ_buf.
 	adc_circ_buf[adc_buf_head] = abs(adc_sample);
 	
 	// Increment head.
@@ -90,25 +59,20 @@ void ADC_IRQHandler()
 	
 	// Did the sound average go above sound_threshold?
 	if(adc_current_sound_level/ADC_BUF_LENGTH > sound_threshold) {
+		// Indicate sound above threshold.
 		LED_turn_on();
+	} else {
+		// Indicate sound below threshold.
+		LED_set_low();
 	}
-	
-//	if(adcSampleMicrophone < 0) {
-//		adcSampleMicrophone = -adcSampleMicrophone;
-//		printf("-%x\r\n", adcSampleMicrophone);
-//	} else {
-//		printf("%d\r\n", adc_current_sound_level/ADC_BUF_LENGTH);
-//	}
 }
 
-//
-// Global Functions
-//
 
-//	Set up regulator.
-//	Set up preamps.
-//	Calibrate.
-void init_ADC(void) {
+//	Set up ADC regulator and preamps.
+// 	Choose ADC channels to sample.
+//	Calibrate ADC.
+//	Set sound detection threshold.
+void Sound_Detect_init(void) {
 	DrvADC_Open();
 	DrvADC_EnableAdc();
 
@@ -127,38 +91,39 @@ void init_ADC(void) {
 	// Calibrate ADC channel.
 	DrvADC_SetAdcOperationMode(eDRVADC_CONTINUOUS_SCAN);
 	DrvADC_SetConversionDataFormat(eDRVADC_2COMPLIMENT);
-//	DrvADC_SetConversionSequence(eDRVADC_CH4CH5,eDRVADC_SCANEND,eDRVADC_SCANEND,eDRVADC_SCANEND,
-//									eDRVADC_SCANEND,eDRVADC_SCANEND, eDRVADC_SCANEND,eDRVADC_SCANEND);
 	DrvADC_SetConversionSequence(eDRVADC_CH0,eDRVADC_SCANEND,eDRVADC_SCANEND,eDRVADC_SCANEND,
 									eDRVADC_SCANEND,eDRVADC_SCANEND, eDRVADC_SCANEND,eDRVADC_SCANEND);
 	DrvADC_StartConvert();
 	DrvADC_AnalysisAdcCalibration();
 	DrvADC_StopConvert();
-	
-	adc_set_sound_threshold(0x80);
+
+	// Set sound detection threshold.
+	Sound_Detect_set_threshold(0x40);
 }
 
-// Start to record.
- void start_ADC(void)
-{
-	 DrvADC_StartConvert();				// start convert
-	 SkipAdcUnstableInput(1280);		// skip 128 * 8 samples
-	 DrvADC_EnableAdcInt();				//enable ADC interrupt
+// Start ADC and enable interrupt.
+ void Sound_Detect_start(void) {
+	DrvADC_StartConvert();
+	ADC_skip_some_samples(1280);
+	DrvADC_EnableAdcInt();
+	LED_set_low();
 }
 
+void Sound_Detect_stop(void) {
+	DrvADC_StopConvert();
+	LED_turn_off();
+}
 
-int16_t adc_get_current_sound_level(void)
-{ 
+int16_t Sound_Detect_get_current_sound_level(void) {
 	return adc_current_sound_level/ADC_BUF_LENGTH;
 }
 
-void ADC_reset_moving_average(void) {
+void Sound_Detect_reset_moving_average(void) {
 	int i;
 	DrvADC_StopConvert();
 	for(i=0;i<ADC_BUF_LENGTH;i++) {
 		adc_circ_buf[i] = 0;
 	}
 	adc_current_sound_level = 0;
-	start_ADC();
+	Sound_Detect_start();
 }
-

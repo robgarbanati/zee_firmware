@@ -16,42 +16,14 @@ extern volatile uint8_t spi_buf_head;
 extern volatile uint8_t spi_buf_tail;
 
 
-
-//void GPAB_IRQHandler(void)
-//{
-//	// Is this SPI CS?
-//	if (DrvGPIO_GetIntFlag(&SPI_GPIO_PORT, SPI_CS_PIN))
-//	{
-//		// Handle send/receive of packets from the robot body.
-//		spiHeadHandler();
-//		
-//		// Clear the SPI CS interrupt.
-//		DrvGPIO_ClearIntFlag(&SPI_GPIO_PORT, SPI_CS_PIN);
-//	}
-//}
-
 // Init ADC clock
-void adcClockInit() {
-//	UINT32	u32HCLK = 0,u32ADCClk = 0;
-//	INT32 adc_clk_freq;
-	
+static void init_adc_clock() {
 	DrvCLK_SetClkSrcAdc(eDRVCLK_ADCSRC_48M);
-	
-	DrvCLK_SetClkDividerAdc(430);//ADC_CLOCK_FREQUENCY);  // == sampling_frequency*25
-	
-//	u32HCLK = DrvCLK_GetHclk();
-//	u32ADCClk = DrvCLK_GetClkAdc();
-
-	
-//	//The ADC engine clock must meet the constraint: ADCLK <=  HCKL/2.
-//	if (u32ADCClk>(u32HCLK/2)) {
-//		puts("ADCClk is greater than half the frequency of the HCLK. That's bad.\n");
-//		puts("Check adcClockInit() in Main.c\n");
-//	}
+	DrvCLK_SetClkDividerAdc(430);
 }
 
 // Initialize system clock.
-void clkInit(void) {
+static void init_clock(void) {
 	// Unlock protected registers.
 	DrvSYS_UnlockKeyReg();
 
@@ -67,73 +39,44 @@ void clkInit(void) {
 	// Enable power on reset (assert reset when power first comes on).
 	DrvSYS_ClearPORDisableCode_P();
 	
-	adcClockInit();
+	init_adc_clock();
 
 	// Lock protected registers.
 	DrvSYS_LockKeyReg();
 }
 
 // Initialize system GPIO.
-void gpioInit(void) {
+static void init_gpio(void) {
 	
-	// Configure GPIO A special functions.
-	DrvSYS_EnableMultifunctionGpioa(
-									DRVSYS_GPIOA_MF1_SPI0_1ST_CHIP_SEL_OUT |	// Master SPI select output serial flash
-									DRVSYS_GPIOA_MF2_SPI0_CLOCK_OUT |					// Master SPI clock output
-									DRVSYS_GPIOA_MF3_SPI0_DATA_IN |						// Master SPI data input
-									DRVSYS_GPIOA_MF4_SPI0_DATA_OUT |					// Master SPI data output
-									
-									DRVSYS_GPIOA_MF8_ADC_CHANNEL0_IN|  	// ADC input
-									DRVSYS_GPIOA_MF9_ADC_CHANNEL1_IN|  	// ADC input
-									DRVSYS_GPIOA_MF10_ADC_CHANNEL2_IN|  // ADC input
-									DRVSYS_GPIOA_MF11_ADC_CHANNEL3_IN|  // ADC input
-									DRVSYS_GPIOA_MF12_ADC_CHANNEL4_IN|  // ADC input
-									DRVSYS_GPIOA_MF13_ADC_CHANNEL5_IN  	// ADC input
-	);
+	// Configure ADC pin.
+	DrvSYS_EnableMultifunctionGpioa(DRVSYS_GPIOA_MF8_ADC_CHANNEL0_IN);
 	
-	// Configure GPIO B special functions.
+	// Configure SPI1 pins.
 	DrvSYS_EnableMultifunctionGpiob(
-		DRVSYS_GPIOB_MF1_SPI1_1ST_CHIP_SEL_OUT |	// Slave SPI select input
-		DRVSYS_GPIOB_MF2_SPI1_CLOCK_OUT |					// Slave SPI clock input
-		DRVSYS_GPIOB_MF3_SPI1_DATA_IN |						// Slave SPI data output
-		DRVSYS_GPIOB_MF4_SPI1_DATA_OUT //|					// Slave SPI data input
+									DRVSYS_GPIOB_MF1_SPI1_1ST_CHIP_SEL_OUT |
+									DRVSYS_GPIOB_MF2_SPI1_CLOCK_OUT |
+									DRVSYS_GPIOB_MF3_SPI1_DATA_IN |
+									DRVSYS_GPIOB_MF4_SPI1_DATA_OUT
 	);
 	
-	// Configure GPIO port B pins.
-	DrvGPIO_SetIOMode(&GPIOB,
-		DRVGPIO_IOMODE_PIN8_OUT |
-		DRVGPIO_IOMODE_PIN9_OUT |
-		DRVGPIO_IOMODE_PIN10_OUT |
-		DRVGPIO_IOMODE_PIN11_OUT
-	); 
-	
-	DrvGPIO_ClearOutputBit(&GPIOB, DRVGPIO_PIN_8);
+	// Configure LED pin.
+	DrvGPIO_SetIOMode(&GPIOB, DRVGPIO_IOMODE_PIN8_OUT); 
 }
 
-// Main thread.
+
 int main (void) {
 	int i =0;
-	// Initialize clocks.
-	clkInit();
 
-	// Initialize GPIO.
-	gpioInit();
+	init_clock();
+	init_gpio();
 	
 	LED_blink_for_half_second();
 	
-	init_ADC();
-	start_ADC();
-//	puts("got past start_adc\r\n");
+	Sound_Detect_init();
+	Sound_Detect_start();
 	
-	spiSlave_Init();
+	SPI_init();
 	
-	LED_set_low();
-	
-	LED_blink();
-	
-//		while(spi_buf_head != spi_buf_tail) {
-//			printf("%d\n", spi_read_buf[spi_buf_head++]);
-//			if(spi_buf_head == 20) spi_buf_head = 0;
-//		}
+	LED_loop();
 }
 
