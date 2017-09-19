@@ -40,10 +40,10 @@
 #include "stm32f4xx_hal.h"
 
 /* USER CODE BEGIN Includes */
-#define 	SET_THRESHOLD_DEMO		1
+#define 	SET_THRESHOLD_DEMO		0
 #define 	TOGGLE_DETECTION_DEMO	0
 #define 	RECEIVE_THRESHOLD_DEMO	0
-#define 	INTERRUPT_LINE_DEMO		0
+#define 	INTERRUPT_LINE_DEMO		1
 
 /* USER CODE END Includes */
 
@@ -124,7 +124,7 @@ int main(void)
 
 #if SET_THRESHOLD_DEMO == 1
 		// Set the value in the following line to any value from 0x00 to 0xff and watch the threshold change on the n572.
-		set_threshold_tx_buf[1] = 0xff;
+		set_threshold_tx_buf[1] = SOUND_THRESHOLD;
 		HAL_SPI_TransmitReceive(&hspi1, set_threshold_tx_buf, spi_rx_buf, 2, 100);
 		HAL_Delay(500);
 		
@@ -143,15 +143,18 @@ int main(void)
 		sound_level = (int16_t) (spi_rx_buf[1]<<8) + (int16_t) spi_rx_buf[2];
 		if(sound_level>sound_threshold) {
 			HAL_GPIO_WritePin(LED12_GPIO_Port, LED12_Pin, GPIO_PIN_SET);
-			HAL_SPI_TransmitReceive(&hspi1, clear_interrupt_buf, spi_rx_buf, 2, 100);
 		} else {
 			HAL_GPIO_WritePin(LED12_GPIO_Port, LED12_Pin, GPIO_PIN_RESET);
 		}
 		HAL_Delay(100);
 
 #elif INTERRUPT_LINE_DEMO == 1
-		HAL_GPIO_WritePin(LED12_GPIO_Port, LED12_Pin, GPIO_PIN_SET);
-		HAL_SPI_TransmitReceive(&hspi1, get_sound_level_tx_buf, spi_rx_buf, 3, 100);
+		if(HAL_GPIO_ReadPin(Sound_Threshold_Detected_GPIO_Port, Sound_Threshold_Detected_Pin)) {
+			HAL_GPIO_WritePin(LED12_GPIO_Port, LED12_Pin, GPIO_PIN_SET);
+			HAL_Delay(100);
+			HAL_SPI_TransmitReceive(&hspi1, clear_interrupt_buf, spi_rx_buf, 2, 100);
+			HAL_GPIO_WritePin(LED12_GPIO_Port, LED12_Pin, GPIO_PIN_RESET);
+		}
 		HAL_Delay(100);
 #endif
 		
@@ -231,12 +234,6 @@ static void MX_SPI1_Init(void)
   {
     _Error_Handler(__FILE__, __LINE__);
   }
-  
-//  while(1) {
-//	  uint8_t spi_byte[] = {0xa6, 0x11};
-//	  HAL_SPI_Transmit(&hspi1, spi_byte, 2, 100);
-//	  HAL_Delay(100);
-//  }
 
 }
 
@@ -247,15 +244,16 @@ static void MX_SPI1_Init(void)
         * EVENT_OUT
         * EXTI
 */
-static void MX_GPIO_Init(void) {
-	GPIO_InitTypeDef GPIO_InitStruct;
+static void MX_GPIO_Init(void)
+{
 
-	/* GPIO Ports Clock Enable */
-	__HAL_RCC_GPIOH_CLK_ENABLE();
-	__HAL_RCC_GPIOA_CLK_ENABLE();
-	__HAL_RCC_GPIOB_CLK_ENABLE();
+  GPIO_InitTypeDef GPIO_InitStruct;
 
-	
+  /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOH_CLK_ENABLE();
+  __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
+
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LED12_GPIO_Port, LED12_Pin, GPIO_PIN_RESET);
 
@@ -264,45 +262,13 @@ static void MX_GPIO_Init(void) {
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(LED12_GPIO_Port, &GPIO_InitStruct);	
-	
-	
-	
-//	__HAL_RCC_GPIOD_CLK_ENABLE();
+  HAL_GPIO_Init(LED12_GPIO_Port, &GPIO_InitStruct);
 
-//	/*Configure GPIO pin Output Level */
-//	HAL_GPIO_WritePin(LED3_GPIO_Port, LED3_Pin, GPIO_PIN_RESET);
-//	/*Configure GPIO pin : LED3_Pin */
-//	GPIO_InitStruct.Pin = LED3_Pin;
-//	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-//	GPIO_InitStruct.Pull = GPIO_NOPULL;
-//	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-//	HAL_GPIO_Init(LED3_GPIO_Port, &GPIO_InitStruct);
-
-//	HAL_GPIO_WritePin(LED4_GPIO_Port, LED4_Pin, GPIO_PIN_RESET);
-//	/*Configure GPIO pin : LED4_Pin */
-//	GPIO_InitStruct.Pin = LED4_Pin;
-//	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-//	GPIO_InitStruct.Pull = GPIO_NOPULL;
-//	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-//	HAL_GPIO_Init(LED4_GPIO_Port, &GPIO_InitStruct);
-
-//	HAL_GPIO_WritePin(LED5_GPIO_Port, LED5_Pin, GPIO_PIN_RESET);
-//	/*Configure GPIO pin : LED5_Pin */
-//	GPIO_InitStruct.Pin = LED5_Pin;
-//	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-//	GPIO_InitStruct.Pull = GPIO_NOPULL;
-//	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-//	HAL_GPIO_Init(LED5_GPIO_Port, &GPIO_InitStruct);
-
-//	HAL_GPIO_WritePin(LED6_GPIO_Port, LED6_Pin, GPIO_PIN_RESET);
-//	/*Configure GPIO pin : LED6_Pin */
-//	GPIO_InitStruct.Pin = LED6_Pin;
-//	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-//	GPIO_InitStruct.Pull = GPIO_NOPULL;
-//	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-//	HAL_GPIO_Init(LED6_GPIO_Port, &GPIO_InitStruct);
-
+  /*Configure GPIO pin : Sound_Threshold_Detected_Pin */
+  GPIO_InitStruct.Pin = Sound_Threshold_Detected_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(Sound_Threshold_Detected_GPIO_Port, &GPIO_InitStruct);
 
 }
 

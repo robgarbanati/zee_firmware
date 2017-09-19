@@ -39,9 +39,9 @@ void LED_loop(void) {
 void LED_blink_for_half_second(void) {
 	int i;
 	for (i=0;i<5;i++) {
-			DrvGPIO_ClearOutputBit(&GPIOB, DRVGPIO_PIN_8);
-			DrvTimer_WaitMillisecondTmr2(50);
 			DrvGPIO_SetOutputBit(&GPIOB, DRVGPIO_PIN_8);
+			DrvTimer_WaitMillisecondTmr2(50);
+			DrvGPIO_ClearOutputBit(&GPIOB, DRVGPIO_PIN_8);
 			DrvTimer_WaitMillisecondTmr2(50);
 	}
 }

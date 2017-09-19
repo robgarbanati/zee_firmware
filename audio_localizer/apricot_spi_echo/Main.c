@@ -19,7 +19,7 @@ extern volatile uint8_t spi_buf_tail;
 // Init ADC clock
 static void init_adc_clock() {
 	DrvCLK_SetClkSrcAdc(eDRVCLK_ADCSRC_48M);
-	DrvCLK_SetClkDividerAdc(430);
+	DrvCLK_SetClkDividerAdc(830);
 }
 
 // Initialize system clock.

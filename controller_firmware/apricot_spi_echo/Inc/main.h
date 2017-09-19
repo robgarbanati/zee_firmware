@@ -46,18 +46,12 @@
 
 /* Private define ------------------------------------------------------------*/
 
-/* USER CODE BEGIN Private defines */
 #define LED12_Pin GPIO_PIN_5
 #define LED12_GPIO_Port GPIOA
-//#define LED3_Pin GPIO_PIN_13
-//#define LED3_GPIO_Port GPIOD
-//#define LED4_Pin GPIO_PIN_12
-//#define LED4_GPIO_Port GPIOD
-//#define LED5_Pin GPIO_PIN_14
-//#define LED5_GPIO_Port GPIOD
-//#define LED6_Pin GPIO_PIN_15
-//#define LED6_GPIO_Port GPIOD
+#define Sound_Threshold_Detected_Pin GPIO_PIN_15
+#define Sound_Threshold_Detected_GPIO_Port GPIOB
 
+/* USER CODE BEGIN Private defines */
 /* USER CODE END Private defines */
 
 void _Error_Handler(char *, int);

@@ -1,7 +1,7 @@
 [PreviousGenFiles]
-HeaderPath=C:/Users/rob/Documents/ologic/google zee/controller_firmware/disco_blink_n_spi/Inc
+HeaderPath=C:/Users/rob/Documents/ologic/google zee/firmware/controller_firmware/apricot_spi_echo/Inc
 HeaderFiles=stm32f4xx_it.h;stm32f4xx_hal_conf.h;main.h;
-SourcePath=C:/Users/rob/Documents/ologic/google zee/controller_firmware/disco_blink_n_spi/Src
+SourcePath=C:/Users/rob/Documents/ologic/google zee/firmware/controller_firmware/apricot_spi_echo/Src
 SourceFiles=stm32f4xx_it.h;stm32f4xx_hal_conf.h;main.h;stm32f4xx_it.c;stm32f4xx_hal_msp.c;main.c;
 
 [PreviousLibFiles]
