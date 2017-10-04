@@ -27,6 +27,8 @@ extern volatile int adc_current_sound_level;
 #define GET_SOUND_CMD			0x03
 #define CLEAR_INTERRUPT_CMD		0x04
 
+static spi_state_t spi_state = NORMAL;
+
 
 //
 // Local Functions
@@ -43,6 +45,20 @@ static uint8_t second_byte(int16_t num) {
 //
 // Global Functions
 //
+
+// Handle the GPIO interrupt.
+void GPAB_IRQHandler(void)
+{
+	// Is this SPI CS?
+	if (DrvGPIO_GetIntFlag(&SPI_GPIO_PORT, SPI_CS_PIN))
+	{
+		// Clear the SPI CS interrupt.
+		DrvGPIO_ClearIntFlag(&SPI_GPIO_PORT, SPI_CS_PIN);
+		
+		// Reset spi state so communication can never go out of sync.
+		spi_state = NORMAL;
+	}
+}
 
 // Enable SPI1 peripheral as a slave and enable SPI1 interrupts.
 void SPI_init(void) {
@@ -63,6 +79,9 @@ void SPI_init(void) {
 	
 	// Enable the SPI interrupt
 	DrvSPI_EnableInt(SPI_HANDLER);
+	
+	// Enable interrupt on rising edge.
+	DrvGPIO_SetRisingInt(&SPI_GPIO_PORT, SPI_CS_PIN, TRUE);
 }
 
 // Write a byte to SPI1 peripheral. It will be sent in the next transaction.
@@ -81,7 +100,6 @@ void SPI_clear_interrupt_line(void) {
 
 void SPI1_IRQHandler() {
 	uint8_t spi_read_byte;
-	static spi_state_t spi_state = NORMAL;
 	static int16_t current_sound_level;
 	
 	if(DrvSPI_GetIntFlag(DRVSPI_SPI1_HANDLER)) {

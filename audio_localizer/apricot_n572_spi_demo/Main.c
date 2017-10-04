@@ -23,6 +23,18 @@ static void init_adc_clock() {
 	DrvCLK_SetClkDividerAdc(ADC_CLK_DIVIDER);
 }
 
+// Set interrupt priorities.
+void set_interrupt_priorities(void) {
+	// Set the SPI slave interrupt priority high.
+	NVIC_SetPriority(SPI1_IRQn, 0);
+
+	// Set the ADC interrupt medium-high.
+	NVIC_SetPriority(ADC_IRQn, 1);
+	
+	// Set the GPIO interrupt priority low.
+	NVIC_SetPriority(GPAB_IRQn, 2);
+}
+
 // Initialize system clock.
 static void init_clock(void) {
 	// Unlock protected registers.
@@ -65,6 +77,10 @@ static void init_gpio(void) {
 						DRVGPIO_IOMODE_PIN8_OUT |	// LED
 						DRVGPIO_IOMODE_PIN12_OUT	// Sound Threshold Pin
 	); 
+	
+	// Enable the GPIO interrupt
+	NVIC_EnableIRQ(GPAB_IRQn);    
+	NVIC_SetPriority(GPAB_IRQn, 2);
 }
 
 
@@ -73,6 +89,8 @@ int main (void) {
 
 	init_clock();
 	init_gpio();
+	
+	set_interrupt_priorities();
 	
 	LED_blink_for_half_second();
 	
