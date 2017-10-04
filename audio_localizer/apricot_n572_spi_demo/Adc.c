@@ -3,11 +3,17 @@
 //
 // Local Variables
 //
-#define ADC_BUF_LENGTH	100
-static int16_t adc_circ_buf[ADC_BUF_LENGTH];
-static volatile uint8_t adc_buf_head = 0;
-static volatile uint8_t adc_buf_tail = 0;
-static volatile int32_t adc_current_sound_level;
+#define SOUND_BUF_LENGTH	100
+static int16_t sound_buf[SOUND_BUF_LENGTH];
+static volatile uint8_t sound_buf_head = 0;
+static volatile uint8_t sound_buf_tail = 0;
+static volatile int32_t current_sound_level;
+
+#define ENV_BUF_LENGTH	2500
+static int16_t env_buf[ENV_BUF_LENGTH];
+static volatile uint16_t env_buf_head = 0;
+static volatile int32_t environmental_sound_level;
+
 static uint16_t sound_threshold = 0x40;
 
 //
@@ -44,23 +50,27 @@ void ADC_IRQHandler() {
 
 	adc_sample = DrvADC_GetConversionDataSigned(0) + 0x1fc;
 
-	// Remove oldest sample from moving average.
-	adc_current_sound_level -= adc_circ_buf[adc_buf_head];
+	// Remove oldest sample from both sound levels.
+	current_sound_level -= sound_buf[sound_buf_head];
+//	environmental_sound_level -= env_buf[env_buf_head];
 	
-	// Add new sample to adc_circ_buf.
-	adc_circ_buf[adc_buf_head] = abs(adc_sample);
-//	adc_circ_buf[adc_buf_head] = adc_sample;
+	// Add new sample to both buffers.
+	sound_buf[sound_buf_head] = abs(adc_sample);
+//	env_buf[env_buf_head] = abs(adc_sample);
 	
-	// Increment head.
-	adc_buf_head++;
-	if(adc_buf_head == ADC_BUF_LENGTH) adc_buf_head = 0;
+	// Increment heads.
+	sound_buf_head++;
+//	env_buf_head++;
+	if(sound_buf_head == SOUND_BUF_LENGTH) sound_buf_head = 0;
+//	if(env_buf_head == ENV_BUF_LENGTH) env_buf_head = 0;
 	
 	// Finish updating moving average.
-	adc_current_sound_level += abs(adc_sample);
-//	adc_current_sound_level += adc_sample;
+	current_sound_level += abs(adc_sample);
+//	environmental_sound_level += abs(adc_sample);
 	
 	// Did the sound average go above sound_threshold?
-	if(adc_current_sound_level/ADC_BUF_LENGTH > sound_threshold) {
+//	if(current_sound_level/SOUND_BUF_LENGTH - environmental_sound_level/ENV_BUF_LENGTH > sound_threshold) {
+	if(current_sound_level/SOUND_BUF_LENGTH > sound_threshold) {
 		// Indicate sound above threshold.
 		LED_turn_on();
 		DrvGPIO_SetOutputBit(&GPIOB, DRVGPIO_PIN_12);
@@ -115,15 +125,15 @@ void Sound_Detect_stop(void) {
 }
 
 int16_t Sound_Detect_get_current_sound_level(void) {
-	return adc_current_sound_level/ADC_BUF_LENGTH;
+	return current_sound_level/SOUND_BUF_LENGTH;
 }
 
 void Sound_Detect_reset_moving_average(void) {
 	int i;
 	DrvADC_StopConvert();
-	for(i=0;i<ADC_BUF_LENGTH;i++) {
-		adc_circ_buf[i] = 0;
+	for(i=0;i<SOUND_BUF_LENGTH;i++) {
+		sound_buf[i] = 0;
 	}
-	adc_current_sound_level = 0;
+	current_sound_level = 0;
 	Sound_Detect_start();
 }

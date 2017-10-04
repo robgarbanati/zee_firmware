@@ -40,8 +40,8 @@
 #include "stm32f4xx_hal.h"
 
 /* USER CODE BEGIN Includes */
-#define 	SET_THRESHOLD_DEMO		0
-#define 	TOGGLE_DETECTION_DEMO	1
+#define 	SET_THRESHOLD_DEMO		1
+#define 	TOGGLE_DETECTION_DEMO	0
 #define 	RECEIVE_THRESHOLD_DEMO	0
 #define 	INTERRUPT_LINE_DEMO		0
 
@@ -114,7 +114,7 @@ int main(void)
 	toggle_sound_detection_tx_buf[1] = 1;
 	SPI_RxTx(&hspi1, toggle_sound_detection_tx_buf, spi_rx_buf, 2, 100);
 	HAL_Delay(100);
-	set_threshold_tx_buf[1] = 0x20;
+	set_threshold_tx_buf[1] = 0x40;
 	SPI_RxTx(&hspi1, set_threshold_tx_buf, spi_rx_buf, 2, 100);
 	HAL_Delay(100);
 

@@ -79,8 +79,7 @@ static void init_gpio(void) {
 	); 
 	
 	// Enable the GPIO interrupt
-	NVIC_EnableIRQ(GPAB_IRQn);    
-	NVIC_SetPriority(GPAB_IRQn, 2);
+//	NVIC_EnableIRQ(GPAB_IRQn);    
 }
 
 
