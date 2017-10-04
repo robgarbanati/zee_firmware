@@ -1,1 +1,0 @@
-Simply flashes lights on the eval board.
