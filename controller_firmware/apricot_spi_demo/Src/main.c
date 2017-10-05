@@ -40,9 +40,9 @@
 #include "stm32f4xx_hal.h"
 
 /* USER CODE BEGIN Includes */
-#define 	SET_THRESHOLD_DEMO		1
+#define 	SET_THRESHOLD_DEMO		0
 #define 	TOGGLE_DETECTION_DEMO	0
-#define 	RECEIVE_THRESHOLD_DEMO	0
+#define 	RECEIVE_THRESHOLD_DEMO	1
 #define 	INTERRUPT_LINE_DEMO		0
 
 /* USER CODE END Includes */
@@ -53,7 +53,7 @@ SPI_HandleTypeDef hspi1;
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
 // Set the value in the following line to any value from 0x00 to 0xff and watch the threshold change on the n572.
-#define SOUND_THRESHOLD	0xff
+#define SOUND_THRESHOLD	0xd0
 static uint8_t sound_threshold = SOUND_THRESHOLD;
 uint8_t set_threshold_tx_buf[] = {0x01, SOUND_THRESHOLD};
 uint8_t toggle_sound_detection_tx_buf[] = {0x02, 0x01};
@@ -114,7 +114,7 @@ int main(void)
 	toggle_sound_detection_tx_buf[1] = 1;
 	SPI_RxTx(&hspi1, toggle_sound_detection_tx_buf, spi_rx_buf, 2, 100);
 	HAL_Delay(100);
-	set_threshold_tx_buf[1] = 0x40;
+	set_threshold_tx_buf[1] = 0x20;
 	SPI_RxTx(&hspi1, set_threshold_tx_buf, spi_rx_buf, 2, 100);
 	HAL_Delay(100);
 
@@ -144,7 +144,6 @@ int main(void)
 		
 #elif RECEIVE_THRESHOLD_DEMO == 1
 		SPI_RxTx(&hspi1, get_sound_level_tx_buf, spi_rx_buf, 3, 100);
-		HAL_Delay(100);
 		
 		sound_level = (int16_t) (spi_rx_buf[1]<<8) + (int16_t) spi_rx_buf[2];
 		if(sound_level>sound_threshold) {
@@ -152,7 +151,7 @@ int main(void)
 		} else {
 			HAL_GPIO_WritePin(LED12_GPIO_Port, LED12_Pin, GPIO_PIN_RESET);
 		}
-		HAL_Delay(100);
+		HAL_Delay(10);
 
 #elif INTERRUPT_LINE_DEMO == 1
 		if(HAL_GPIO_ReadPin(Sound_Threshold_Detected_GPIO_Port, Sound_Threshold_Detected_Pin)) {

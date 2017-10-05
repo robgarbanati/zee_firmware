@@ -39,38 +39,52 @@ static void ADC_skip_some_samples(uint16_t samples_to_skip) {
 //
 
 void Sound_Detect_set_threshold(uint8_t threshold) {
-	sound_threshold = threshold * 0x10;
+	sound_threshold = threshold;
 }
 
 void ADC_IRQHandler() {
 	int16_t adc_sample;
+	static uint8_t counter = 0;
 
 	// Clear the ADC interrupt flag.
 	DrvADC_ClearAdcIntFlag();
 
 	adc_sample = DrvADC_GetConversionDataSigned(0) + 0x1fc;
 
-	// Remove oldest sample from both sound levels.
+	// Remove oldest sample from current sound level buffer.
 	current_sound_level -= sound_buf[sound_buf_head];
-//	environmental_sound_level -= env_buf[env_buf_head];
 	
-	// Add new sample to both buffers.
+	// Add new sample to buffer.
 	sound_buf[sound_buf_head] = abs(adc_sample);
-//	env_buf[env_buf_head] = abs(adc_sample);
 	
-	// Increment heads.
+	// Increment head.
 	sound_buf_head++;
-//	env_buf_head++;
 	if(sound_buf_head == SOUND_BUF_LENGTH) sound_buf_head = 0;
-//	if(env_buf_head == ENV_BUF_LENGTH) env_buf_head = 0;
-	
+
 	// Finish updating moving average.
 	current_sound_level += abs(adc_sample);
-//	environmental_sound_level += abs(adc_sample);
+	
+	// Update the environmental noise level once every 100 samples.
+	if(++counter >= 100) {
+		counter = 0;
+		
+		// Remove oldest sample from env buffer.
+		environmental_sound_level -= env_buf[env_buf_head];
+		
+		// Add new sample to env buffer.
+		env_buf[env_buf_head] = abs(adc_sample);
+		
+		// Increment env head.
+		env_buf_head++;
+		if(env_buf_head == ENV_BUF_LENGTH) env_buf_head = 0;
+		
+		// Finish updating env moving average.
+		environmental_sound_level += abs(adc_sample);
+	}
 	
 	// Did the sound average go above sound_threshold?
-//	if(current_sound_level/SOUND_BUF_LENGTH - environmental_sound_level/ENV_BUF_LENGTH > sound_threshold) {
-	if(current_sound_level/SOUND_BUF_LENGTH > sound_threshold) {
+	if(current_sound_level/SOUND_BUF_LENGTH - environmental_sound_level/ENV_BUF_LENGTH > sound_threshold) {
+//	if(current_sound_level/SOUND_BUF_LENGTH > sound_threshold) {
 		// Indicate sound above threshold.
 		LED_turn_on();
 		DrvGPIO_SetOutputBit(&GPIOB, DRVGPIO_PIN_12);
@@ -125,7 +139,7 @@ void Sound_Detect_stop(void) {
 }
 
 int16_t Sound_Detect_get_current_sound_level(void) {
-	return current_sound_level/SOUND_BUF_LENGTH;
+	return current_sound_level/SOUND_BUF_LENGTH - environmental_sound_level/ENV_BUF_LENGTH;
 }
 
 void Sound_Detect_reset_moving_average(void) {
