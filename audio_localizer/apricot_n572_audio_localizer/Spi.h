@@ -19,8 +19,13 @@ typedef enum spi_state_enum_t {
 	NORMAL,
 	SOUND_VOL_2ND_BYTE,
 	READ_THRESHOLD,
-	READ_DETECTION_BOOL
+	READ_TRILATERATION_BOOL
 } spi_state_t;
+
+#define GET_DIRECTION_CMD			0x01
+#define TOGGLE_TRILATERATION_CMD	0x02
+#define GET_SOUND_CMD				0x03
+#define CLEAR_INTERRUPT_CMD			0x04
 
 void SPI_init(void);
 void SPI_write_byte(UINT8 value);

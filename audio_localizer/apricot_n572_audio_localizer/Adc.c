@@ -3,9 +3,6 @@
 //
 // Local Variables
 //
-#define MIC_BUF_LENGTH	750
-#define i16 int16_t
-#define u16 uint16_t
 
 static i16 micA_buf[MIC_BUF_LENGTH];
 static i16 micB_buf[MIC_BUF_LENGTH];
@@ -126,3 +123,125 @@ void AT_stop(void) {
 i16 AT_get_current_audio_direction(void) {
 	return current_audio_direction;
 }
+
+// Find the number of indices buf1 is shifted from buf2. Return as best_phase.
+// best_phase * SAMPLE_FREQUENCY = time delay in audio from mic2 to mic1.
+// (positive best_phase means sound hits mic2 first).
+static i16 find_phase(i16* buf1, i16* buf2, int vol_min_1, int vol_min_2)
+{
+	int phase,i;
+	int sub = 0, cost = 0;
+	int best_phase = 0, bestcost = 0x7FFFFFFF;
+	int height_difference = vol_min_1 - vol_min_2;
+	int64_t sumcost = 0;
+	
+	// Calculate squared sum of errors for all phase shifts from -PHASE_ESTIMATION_RESOLUTION to +PHASE_ESTIMATION_RESOLUTION.
+	for(phase = -PHASE_ESTIMATION_RESOLUTION; phase<PHASE_ESTIMATION_RESOLUTION; phase++) {
+		cost = 0;
+		// Calculate squared sum of errors.
+		for(i = PHASE_ESTIMATION_RESOLUTION; i<MIC_BUF_LENGTH - PHASE_ESTIMATION_RESOLUTION; i++) {
+			sub = (buf1[i + phase] - buf2[i] - height_difference);
+			cost = cost + sub*sub;
+		}
+//		printf("%d ", cost);
+		if (bestcost > cost) {
+			bestcost = cost;
+			best_phase = phase;
+			sumcost += cost;
+		}
+	}
+//	printf("%d %lld %d\n", bestcost, sumcost/P_E_RES/2, best_phase);
+
+	return best_phase; 
+}
+
+void determine_direction(i16 phaseAB, i16 phaseAC, i16 phaseBC) {
+	static u8 direction, prev_direction = 0;
+	static u8 consistency_counter = 0;
+	
+	prev_direction = direction;
+
+	if (phaseAB == 0) {
+		if ((phaseAC > 0) && (phaseBC > 0))
+			direction = 9;
+		else
+			direction = 3;
+	}
+	else if (phaseAC == 0) {
+		if ((phaseAB > 0) && (phaseBC < 0))
+			direction = 5;
+		else
+			direction = 11;
+	}
+	else if (phaseBC == 0) {
+		if ((phaseAC < 0) && (phaseAB < 0))
+			direction = 1;
+		else
+			direction = 7;
+	}
+	else if ((phaseAB < 0) && (phaseAC < 0)) {  // sound hits A first
+		if (phaseBC > 0)
+			direction = 0;
+		else
+			direction = 2;
+	}
+	else if ((phaseAC > 0) && (phaseBC > 0)) {  // sound hits C first
+		if (phaseAB > 0)
+			direction = 8;
+		else
+			direction = 10;
+	}
+	else if ((phaseAB > 0) && (phaseBC < 0)) {  // sound hits B first
+		if (phaseAC > 0)
+			direction = 6;
+		else
+			direction = 4;
+	}
+	else {
+		consistency_counter = 0;
+		return;
+	}
+	
+	// only change direction if we are very confident in that direction
+	if (direction == prev_direction)
+		consistency_counter++;
+	else
+		consistency_counter = 0;
+	
+	if (consistency_counter >=3) {
+		current_audio_direction = direction;
+	}
+}
+
+void audio_trilaterate(void) {	
+	static int k=0;
+	i16 phaseAB=0, phaseAC=0, phaseBC=0;
+
+	//Have we collected an array's worth of data?
+	if (!collect_samples) {	
+		phaseAB = find_phase(micA_buf, micB_buf, vol_min_A, vol_min_B);
+		phaseAC = find_phase(micA_buf, micC_buf, vol_min_A, vol_min_C);
+		phaseBC = find_phase(micB_buf, micC_buf, vol_min_B, vol_min_C);
+		
+		determine_direction(phaseAB, phaseAC, phaseBC);
+
+		// print maybe
+#if 0
+		for(k = P_E_RES; k<ADC_BUFFER_SIZE - P_E_RES; k++)
+		{
+			printf("%d, %d, %d, %d\n", k, micA_buf[k], micB_buf[k], micC_buf[k]);
+		}
+		for(;;);
+#endif
+		
+		collect_samples = 1; // let the ADC_ISR take data again
+		vol_max_A = INT16_MIN;
+		vol_max_B = INT16_MIN;
+		vol_max_C = INT16_MIN;
+		
+		vol_min_A = INT16_MAX;
+		vol_min_B = INT16_MAX;
+		vol_min_C = INT16_MAX;
+	}
+}
+

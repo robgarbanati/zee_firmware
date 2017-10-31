@@ -11,11 +11,16 @@
 #include "Platform.h"
 #include "LED.h"
 
-void Sound_Detect_set_threshold(uint8_t threshold);
-void Sound_Detect_init(void);
-void Sound_Detect_start(void);
-void Sound_Detect_stop(void);
-int16_t Sound_Detect_get_current_sound_level(void);
-void Sound_Detect_reset_moving_average(void);
+#define MIC_BUF_LENGTH	750
+#define i16 int16_t
+#define u16 uint16_t
+#define u8 uint8_t
+
+void AT_init(void);
+void AT_start(void);
+void AT_stop(void);
+i16 AT_get_current_audio_direction(void);
+
+#define PHASE_ESTIMATION_RESOLUTION 7
 
 #endif // __ADC_H

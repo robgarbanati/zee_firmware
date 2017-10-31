@@ -93,8 +93,9 @@ int main (void) {
 	
 	LED_blink_for_half_second();
 	
-	Sound_Detect_init();
-	Sound_Detect_start();
+	// Start audio trilateration
+	AT_init();
+	AT_start();
 	
 	SPI_init();
 	

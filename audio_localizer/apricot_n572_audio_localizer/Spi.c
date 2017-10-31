@@ -22,11 +22,6 @@ extern volatile int adc_current_sound_level;
 								 DRVSPI_RX_POSEDGE | \
 								 _DRVSPI_DATA_BITS(8))
 
-#define SET_THRESHOLD_CMD		0x01
-#define TOGGLE_DETECTION_CMD	0x02
-#define GET_SOUND_CMD			0x03
-#define CLEAR_INTERRUPT_CMD		0x04
-
 static spi_state_t spi_state = NORMAL;
 
 
@@ -34,13 +29,13 @@ static spi_state_t spi_state = NORMAL;
 // Local Functions
 //
 
-static uint8_t first_byte(int16_t num) {
-	return (uint8_t) ((num>>8) & 0xFF);
-}
+//static uint8_t first_byte(int16_t num) {
+//	return (uint8_t) ((num>>8) & 0xFF);
+//}
 
-static uint8_t second_byte(int16_t num) {
-	return (uint8_t) (num & 0xFF);
-}
+//static uint8_t second_byte(int16_t num) {
+//	return (uint8_t) (num & 0xFF);
+//}
 
 //
 // Global Functions
@@ -111,20 +106,20 @@ void SPI1_IRQHandler() {
 		
 		// Write a response based on state and incoming message.
 		switch(spi_state) {
-			case SOUND_VOL_2ND_BYTE:
-				SPI_write_byte(second_byte(current_sound_level));
-				spi_state = NORMAL;
-				break;
-			case READ_THRESHOLD:
-				Sound_Detect_set_threshold(spi_read_byte);
-				spi_state = NORMAL;
-				SPI_write_byte(spi_read_byte);
-				break;
-			case READ_DETECTION_BOOL:
+//			case SOUND_VOL_2ND_BYTE:
+//				SPI_write_byte(second_byte(current_sound_level));
+//				spi_state = NORMAL;
+//				break;
+//			case READ_THRESHOLD:
+//				Sound_Detect_set_threshold(spi_read_byte);
+//				spi_state = NORMAL;
+//				SPI_write_byte(spi_read_byte);
+//				break;
+			case READ_TRILATERATION_BOOL:
 				if(spi_read_byte == 1) {
-					Sound_Detect_start();
+					AT_start();
 				} else {
-					Sound_Detect_stop();
+					AT_stop();
 				}
 				spi_state = NORMAL;
 				SPI_write_byte(spi_read_byte);
@@ -132,19 +127,16 @@ void SPI1_IRQHandler() {
 			case NORMAL:
 			default:
 				switch(spi_read_byte) {
-					case GET_SOUND_CMD:
-						current_sound_level = Sound_Detect_get_current_sound_level();
-						SPI_write_byte(first_byte(current_sound_level));
-						spi_state = SOUND_VOL_2ND_BYTE;
+					case GET_DIRECTION_CMD:
+						SPI_write_byte(AT_get_current_audio_direction());
+						spi_state = NORMAL;
 						break;
-					case SET_THRESHOLD_CMD:
-						current_sound_level = Sound_Detect_get_current_sound_level();
-						spi_state = READ_THRESHOLD;
-						SPI_write_byte(spi_read_byte);
-						break;
-					case TOGGLE_DETECTION_CMD:
-						current_sound_level = Sound_Detect_get_current_sound_level();
-						spi_state = READ_DETECTION_BOOL;
+//					case SET_THRESHOLD_CMD:
+//						spi_state = READ_THRESHOLD;
+//						SPI_write_byte(spi_read_byte);
+//						break;
+					case TOGGLE_TRILATERATION_CMD:
+						spi_state = READ_TRILATERATION_BOOL;
 						SPI_write_byte(spi_read_byte);
 						break;
 					case CLEAR_INTERRUPT_CMD:
