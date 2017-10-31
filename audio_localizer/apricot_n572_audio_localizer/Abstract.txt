@@ -1,0 +1,24 @@
+LED is off when sound detection is turned off.
+LED is low when detection is turned on, but sound detected is not above threshold.
+LED is high when sound detected is above threshold.
+Sets GPIOB 12 when sound detected is above threshold. Stays high until cleared by spi command.
+
+Implements the following spi protocol:
+[command] [data0] ... [dataN]
+STM -> N572 
+
+set threshold
+0x01 [threshold_byte]
+
+enable/disable sound detection
+0x02 [enable/disable_boolean (0x00 = disable, 0x01 = enable)]
+
+get sound db.
+0x03 0x00 0x00 (read 12 bit int average of sound amplitude received over past 1/8 second, expressed in raw adc voltage)
+
+clear interrupt. (lower GPIOB 12).
+0x04
+
+N572 -> STM
+interrupt when sound detected. (rise interrupt gpio)
+
