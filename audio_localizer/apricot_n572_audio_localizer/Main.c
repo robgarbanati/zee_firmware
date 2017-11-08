@@ -14,7 +14,7 @@
 extern uint8_t spi_read_buf[20];
 extern volatile uint8_t spi_buf_head;
 extern volatile uint8_t spi_buf_tail;
-#define SAMPLE_RATE	20000
+#define SAMPLE_RATE	44000
 #define ADC_CLK_DIVIDER				(DrvCLK_GetSrcClkAdc()/25/SAMPLE_RATE-1)
 
 // Init ADC clock
@@ -98,6 +98,10 @@ int main (void) {
 	AT_start();
 	
 	SPI_init();
+	
+	while(1) {
+		audio_trilaterate();
+	}
 	
 	LED_loop();
 }

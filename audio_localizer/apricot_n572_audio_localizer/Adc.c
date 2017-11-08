@@ -11,10 +11,10 @@ static i16 micC_buf[MIC_BUF_LENGTH];
 static u16 x = 0;
 static unsigned short collect_samples;
 
-i16 Vol_Max, vol_max_A, vol_max_B, vol_max_C;
-i16 Vol_Min, vol_min_A, vol_min_B, vol_min_C;
+i16 micA_maximum_volume, micB_maximum_volume, micC_maximum_volume;
+i16 micA_minimum_volume, micB_minimum_volume, micC_minimum_volume;
 
-static i16 current_audio_direction;
+static float current_audio_direction;
 
 //
 // Local Functions
@@ -39,43 +39,51 @@ static void ADC_skip_some_samples(u16 samples_to_skip) {
 //
 void ADC_IRQHandler() {
 	static u16 index = 0;
-	static uint8_t counter = 0;
-
+	static u8 counter = 0;
+	
+	if (collect_samples) {
+		if (DrvADC_GetAdcIntFlag()) {
+			
+			// Add most recent ADC samples to microphone buffers. TODO check if biases are consistent amongst boards and microphones.
+			micA_buf[index] = 	DrvADC_GetConversionDataSigned(0) + 0x1fc; // for some reason this is how the microphones are biased (should be biased at 2V which is a bit off from a natural 0 value of 1.65V)
+			micB_buf[index] = 	DrvADC_GetConversionDataSigned(1) + 0x185; // for some reason this is how the microphones are biased (should be biased at 2V which is a bit off from a natural 0 value of 1.65V)
+			micC_buf[index] = 	DrvADC_GetConversionDataSigned(2) + 0x185; // for some reason this is how the microphones are biased (should be biased at 2V which is a bit off from a natural 0 value of 1.65V)
+			
+			// Clear the ADC interrupt flag.
+			DrvADC_ClearAdcIntFlag();
+			
+			// Record max and min for each microphone buffer.
+			if(micA_buf[index] > micA_maximum_volume) {
+				micA_maximum_volume = micA_buf[index];
+			}
+			if(micB_buf[index] > micB_maximum_volume) {
+				micB_maximum_volume = micB_buf[index];
+			}
+			if(micC_buf[index] > micC_maximum_volume) {
+				micC_maximum_volume = micC_buf[index];
+			}
+			
+			if(micA_buf[index] < micA_minimum_volume) {
+				micA_minimum_volume = micA_buf[index];
+			}
+			if(micB_buf[index] < micB_minimum_volume) {
+				micB_minimum_volume = micB_buf[index];
+			}
+			if(micC_buf[index] < micC_minimum_volume) {
+				micC_minimum_volume = micC_buf[index];
+			}
+			
+			index++;
+					
+			if (index >= (MIC_BUF_LENGTH)) {
+				collect_samples = 0;
+				index = 0;
+				AT_stop();
+			}
+		}
+	}
 	// Clear the ADC interrupt flag.
 	DrvADC_ClearAdcIntFlag();
-	
-	// Add most recent ADC samples to microphone buffers.
-	micA_buf[index] = 	DrvADC_GetConversionDataSigned(0) + 0x1fc;
-	micB_buf[index] = 	DrvADC_GetConversionDataSigned(1) + 0x1fc;
-	micC_buf[index] = 	DrvADC_GetConversionDataSigned(2) + 0x1fc;
-	
-	// Record the max and min values for each buffer.
-	if(micA_buf[x] > vol_max_A) {
-		vol_max_A = micA_buf[x];
-	}
-	if(micB_buf[x] > vol_max_B) {
-		vol_max_B = micB_buf[x];
-	}
-	if(micC_buf[x] > vol_max_C) {
-		vol_max_C = micC_buf[x];
-	}
-	
-	if(micA_buf[x] < vol_min_A) {
-		vol_min_A = micA_buf[x];
-	}
-	if(micB_buf[x] < vol_min_B) {
-		vol_min_B = micB_buf[x];
-	}
-	if(micC_buf[x] < vol_min_C) {
-		vol_min_C = micC_buf[x];
-	}
-	
-	index++;
-			
-	if (index >= (MIC_BUF_LENGTH)) {
-		collect_samples = 0;
-		index = 0;
-	}
 }
 
 
@@ -101,18 +109,19 @@ void AT_init(void) {
 	// Calibrate ADC channel.
 	DrvADC_SetAdcOperationMode(eDRVADC_CONTINUOUS_SCAN);
 	DrvADC_SetConversionDataFormat(eDRVADC_2COMPLIMENT);
-	DrvADC_SetConversionSequence(eDRVADC_CH0,eDRVADC_SCANEND,eDRVADC_SCANEND,eDRVADC_SCANEND,
-									eDRVADC_SCANEND,eDRVADC_SCANEND, eDRVADC_SCANEND,eDRVADC_SCANEND);
+	DrvADC_SetConversionSequence(eDRVADC_CH0,eDRVADC_CH1,eDRVADC_CH2,eDRVADC_SCANEND,
+								 eDRVADC_SCANEND,eDRVADC_SCANEND,eDRVADC_SCANEND,eDRVADC_SCANEND);
 	DrvADC_StartConvert();
 	DrvADC_AnalysisAdcCalibration();
+	ADC_skip_some_samples(1280);
 	DrvADC_StopConvert();
 }
 
 // Start ADC and enable interrupt.
  void AT_start(void) {
 	DrvADC_StartConvert();
-	ADC_skip_some_samples(1280);
 	DrvADC_EnableAdcInt();
+	collect_samples = 1;
 }
 
 void AT_stop(void) {
@@ -120,96 +129,105 @@ void AT_stop(void) {
 	LED_turn_off();
 }
 
-i16 AT_get_current_audio_direction(void) {
+float AT_get_current_audio_direction(void) {
 	return current_audio_direction;
 }
 
-// Find the number of indices buf1 is shifted from buf2. Return as best_phase.
-// best_phase * SAMPLE_FREQUENCY = time delay in audio from mic2 to mic1.
-// (positive best_phase means sound hits mic2 first).
-static i16 find_phase(i16* buf1, i16* buf2, int vol_min_1, int vol_min_2)
-{
-	int phase,i;
-	int sub = 0, cost = 0;
-	int best_phase = 0, bestcost = 0x7FFFFFFF;
-	int height_difference = vol_min_1 - vol_min_2;
-	int64_t sumcost = 0;
+// Find the phase difference in terms of number of sample periods
+// (determined by SAMPLE_RATE) between audio_array1 and audio_array2.
+// If sound hit mic2 first, this function returns a positive integer.
+// If sound hit mic1 first, this function returns a negative integer.
+static i16 find_phase(i16* audio_array1, i16* audio_array2) {
+	i16 phase;
+	u16 i;
+	i32 error = 0, cost = 0;
+	i32 best_phase = 0, lowest_cost = INT32_MAX;
 	
-	// Calculate squared sum of errors for all phase shifts from -PHASE_ESTIMATION_RESOLUTION to +PHASE_ESTIMATION_RESOLUTION.
+	// Calculate cost function for all possible phase shifts.
 	for(phase = -PHASE_ESTIMATION_RESOLUTION; phase<PHASE_ESTIMATION_RESOLUTION; phase++) {
 		cost = 0;
-		// Calculate squared sum of errors.
+		// Calculate cost function (sum of all errors^2).
 		for(i = PHASE_ESTIMATION_RESOLUTION; i<MIC_BUF_LENGTH - PHASE_ESTIMATION_RESOLUTION; i++) {
-			sub = (buf1[i + phase] - buf2[i] - height_difference);
-			cost = cost + sub*sub;
+			error = (audio_array1[i + phase] - audio_array2[i]);
+			cost = cost + error*error;
 		}
-//		printf("%d ", cost);
-		if (bestcost > cost) {
-			bestcost = cost;
+		// Remember phase associated with lowest cost (that's the phase shift we think the sound has between the two mics).
+		if (cost < lowest_cost) {
+			lowest_cost = cost;
 			best_phase = phase;
-			sumcost += cost;
 		}
 	}
-//	printf("%d %lld %d\n", bestcost, sumcost/P_E_RES/2, best_phase);
 
 	return best_phase; 
 }
 
-void determine_direction(i16 phaseAB, i16 phaseAC, i16 phaseBC) {
-	static u8 direction, prev_direction = 0;
-	static u8 consistency_counter = 0;
+#define WIDTH 1
+void determine_audio_direction(i16 phaseAB, i16 phaseAC, i16 phaseBC) {
+	static u8 audio_direction, prev_audio_direction = 0;
+	static u16 consistency_counter = 0;
 	
-	prev_direction = direction;
+	prev_audio_direction = audio_direction;
 
-	if (phaseAB == 0) {
+	if (abs(phaseAB) <= WIDTH) {
 		if ((phaseAC > 0) && (phaseBC > 0))
-			direction = 9;
+			audio_direction = 9;
 		else
-			direction = 3;
+			audio_direction = 3;
 	}
-	else if (phaseAC == 0) {
+	else if (abs(phaseAC) <= WIDTH) {
 		if ((phaseAB > 0) && (phaseBC < 0))
-			direction = 5;
+			audio_direction = 5;
 		else
-			direction = 11;
+			audio_direction = 11;
 	}
-	else if (phaseBC == 0) {
+	else if (abs(phaseBC) <= WIDTH) {
 		if ((phaseAC < 0) && (phaseAB < 0))
-			direction = 1;
+			audio_direction = 1;
 		else
-			direction = 7;
+			audio_direction = 7;
 	}
 	else if ((phaseAB < 0) && (phaseAC < 0)) {  // sound hits A first
 		if (phaseBC > 0)
-			direction = 0;
+			audio_direction = 0;
 		else
-			direction = 2;
+			audio_direction = 2;
 	}
 	else if ((phaseAC > 0) && (phaseBC > 0)) {  // sound hits C first
 		if (phaseAB > 0)
-			direction = 8;
+			audio_direction = 8;
 		else
-			direction = 10;
+			audio_direction = 10;
 	}
 	else if ((phaseAB > 0) && (phaseBC < 0)) {  // sound hits B first
 		if (phaseAC > 0)
-			direction = 6;
+			audio_direction = 6;
 		else
-			direction = 4;
+			audio_direction = 4;
 	}
 	else {
+		current_audio_direction = 13;
 		consistency_counter = 0;
 		return;
 	}
 	
-	// only change direction if we are very confident in that direction
-	if (direction == prev_direction)
+	// only change audio_direction if we are very confident in that direction
+	if ( (abs(audio_direction - prev_audio_direction) <= 3) || (abs(audio_direction - prev_audio_direction) >= 10) ) {
 		consistency_counter++;
-	else
+	} else {
 		consistency_counter = 0;
+	}
 	
-	if (consistency_counter >=3) {
-		current_audio_direction = direction;
+	if (consistency_counter >=2) {
+		if((micA_maximum_volume - micA_minimum_volume) > 110) {
+			current_audio_direction = (float) (((float) (prev_audio_direction + audio_direction))/2);
+			if (abs(audio_direction - prev_audio_direction) >= 11) {
+				current_audio_direction += 6;
+			}
+		} else {
+			current_audio_direction = 13;
+		}
+	} else {
+		current_audio_direction = 13;
 	}
 }
 
@@ -219,29 +237,34 @@ void audio_trilaterate(void) {
 
 	//Have we collected an array's worth of data?
 	if (!collect_samples) {	
-		phaseAB = find_phase(micA_buf, micB_buf, vol_min_A, vol_min_B);
-		phaseAC = find_phase(micA_buf, micC_buf, vol_min_A, vol_min_C);
-		phaseBC = find_phase(micB_buf, micC_buf, vol_min_B, vol_min_C);
+		phaseAB = find_phase(micA_buf, micB_buf);
+		phaseAC = find_phase(micA_buf, micC_buf);
+		phaseBC = find_phase(micB_buf, micC_buf);
 		
-		determine_direction(phaseAB, phaseAC, phaseBC);
+		determine_audio_direction(phaseAB, phaseAC, phaseBC);
 
 		// print maybe
 #if 0
-		for(k = P_E_RES; k<ADC_BUFFER_SIZE - P_E_RES; k++)
-		{
+		for(k = PHASE_ESTIMATION_RESOLUTION; k<MIC_BUF_LENGTH - PHASE_ESTIMATION_RESOLUTION; k++) {
 			printf("%d, %d, %d, %d\n", k, micA_buf[k], micB_buf[k], micC_buf[k]);
 		}
-		for(;;);
+//		for(;;);
 #endif
+#if 1
+		if(AT_get_current_audio_direction() != 13) {
+			printf("%1.1f\n", AT_get_current_audio_direction());
+		}
+//		for(;;);
+#endif
+		AT_start();
 		
-		collect_samples = 1; // let the ADC_ISR take data again
-		vol_max_A = INT16_MIN;
-		vol_max_B = INT16_MIN;
-		vol_max_C = INT16_MIN;
+		micA_maximum_volume = INT16_MIN;
+		micB_maximum_volume = INT16_MIN;
+		micC_maximum_volume = INT16_MIN;
 		
-		vol_min_A = INT16_MAX;
-		vol_min_B = INT16_MAX;
-		vol_min_C = INT16_MAX;
+		micA_minimum_volume = INT16_MAX;
+		micB_minimum_volume = INT16_MAX;
+		micC_minimum_volume = INT16_MAX;
 	}
 }
 
