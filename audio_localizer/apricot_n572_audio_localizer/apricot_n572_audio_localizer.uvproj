@@ -46,7 +46,7 @@
             <InvalidFlash>1</InvalidFlash>
           </TargetStatus>
           <OutputDirectory>.\F072\Debug\</OutputDirectory>
-          <OutputName>apricot_n572_spi_demo</OutputName>
+          <OutputName>apricot_n572_audio_localizer</OutputName>
           <CreateExecutable>1</CreateExecutable>
           <CreateLib>0</CreateLib>
           <CreateHexFile>0</CreateHexFile>
@@ -79,8 +79,8 @@
           <AfterMake>
             <RunUserProg1>1</RunUserProg1>
             <RunUserProg2>1</RunUserProg2>
-            <UserProg1Name>fromelf --i32combined --output F072\Debug\apricot_n572_spi_demo.hex F072\Debug\apricot_n572_spi_demo.axf</UserProg1Name>
-            <UserProg2Name>../Nuvoton/WindowsPlatform/Tool/Utility/hex2bin F072\Debug\apricot_n572_spi_demo.hex</UserProg2Name>
+            <UserProg1Name>fromelf --i32combined --output F072\Debug\apricot_n572_audio_localizer.hex F072\Debug\apricot_n572_audio_localizer.axf</UserProg1Name>
+            <UserProg2Name>../Nuvoton/WindowsPlatform/Tool/Utility/hex2bin F072\Debug\apricot_n572_audio_localizer.hex</UserProg2Name>
             <UserProg1Dos16Mode>0</UserProg1Dos16Mode>
             <UserProg2Dos16Mode>0</UserProg2Dos16Mode>
             <nStopA1X>0</nStopA1X>
@@ -405,7 +405,7 @@
             <TextAddressRange>0x00000000</TextAddressRange>
             <DataAddressRange>0x20000000</DataAddressRange>
             <pXoBase></pXoBase>
-            <ScatterFile>.\apricot_n572_spi_demo_F072_Keil.ld</ScatterFile>
+            <ScatterFile>.\apricot_n572_audio_localizer_F072_Keil.ld</ScatterFile>
             <IncludeLibs></IncludeLibs>
             <IncludeLibsPath></IncludeLibsPath>
             <Misc>--map --datacompressor=off --info=inline --entry Reset_Handler --remove --userlibpath="../Nuvoton/Lib" Driver_F072_keil.lib</Misc>
