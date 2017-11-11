@@ -24,10 +24,12 @@ void AT_stop(void);
 float AT_get_current_audio_direction(void);
 void audio_trilaterate(void);
 
-#define MIC_BUF_LENGTH	350
-#define PHASE_ESTIMATION_RESOLUTION 47
-#define DETECTION_THRESHOLD 120
-#define TRIPS_TO_TRIGGER_DIRECTION_DETECTION 12
+#define MIN_SOUND_LENGTH 109
+#define MIC_BUF_LENGTH	400
+#define HEADROOM		40
+#define PHASE_ESTIMATION_RESOLUTION 30
+#define DETECTION_THRESHOLD 180
+#define TRIPS_TO_TRIGGER_DIRECTION_DETECTION 55
 #define SAMPLE_RATE	120000
 
 #endif // __ADC_H
