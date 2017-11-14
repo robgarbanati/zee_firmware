@@ -24,7 +24,6 @@ typedef enum spi_state_enum_t {
 
 #define GET_DIRECTION_CMD			0x01
 #define TOGGLE_TRILATERATION_CMD	0x02
-#define GET_SOUND_CMD				0x03
 #define CLEAR_INTERRUPT_CMD			0x04
 
 void SPI_init(void);

@@ -64,14 +64,13 @@ static void init_gpio(void) {
 	DrvSYS_EnableMultifunctionGpioa(DRVSYS_GPIOA_MF8_ADC_CHANNEL0_IN);
 	
 	// Configure SPI1 pins.
-//	DrvSYS_EnableMultifunctionGpiob(
-//									DRVSYS_GPIOB_MF1_SPI1_1ST_CHIP_SEL_OUT |
-//									DRVSYS_GPIOB_MF2_SPI1_CLOCK_OUT |
-//									DRVSYS_GPIOB_MF3_SPI1_DATA_IN |
-//									DRVSYS_GPIOB_MF4_SPI1_DATA_OUT
-//	);
-	// TODO uncomment
-	
+	DrvSYS_EnableMultifunctionGpiob(
+									DRVSYS_GPIOB_MF1_SPI1_1ST_CHIP_SEL_OUT |
+									DRVSYS_GPIOB_MF2_SPI1_CLOCK_OUT |
+									DRVSYS_GPIOB_MF3_SPI1_DATA_IN |
+									DRVSYS_GPIOB_MF4_SPI1_DATA_OUT
+	);
+
 	// Configure GPIO B pins.
 	DrvGPIO_SetIOMode(&GPIOB, 
 						DRVGPIO_IOMODE_PIN3_OUT |	// MISO AS GPIO // TODO REMOVE
@@ -97,7 +96,7 @@ int main (void) {
 	AT_init();
 	AT_start();
 	
-//	SPI_init();
+	SPI_init();
 	
 	while(1) {
 		audio_trilaterate();

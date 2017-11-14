@@ -357,11 +357,13 @@ void determine_audio_direction(i16 phaseAB, i16 phaseAC, i16 phaseBC) {
 			audio_direction = 4;
 	}
 	else {
-		current_audio_direction = 13;
+//		current_audio_direction = 13;
 		consistency_counter = 0;
 		return;
 	}
-	current_audio_direction = audio_direction;
+	if(audio_direction != 13) {
+		current_audio_direction = audio_direction;
+	}
 	
 	// only change audio_direction if we are very confident in that direction
 //	if ( (abs(audio_direction - prev_audio_direction) <= 3) || (abs(audio_direction - prev_audio_direction) >= 10) ) {
@@ -429,7 +431,7 @@ void audio_trilaterate(void) {
 		determine_audio_direction(phaseAB, phaseAC, phaseBC);
 //		puts("");
 		
-#if 1
+#if 0
 		// print direction.
 //		if(abs(phaseBC) > 28)
 		if(AT_get_current_audio_direction() != 13) {

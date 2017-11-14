@@ -106,15 +106,6 @@ void SPI1_IRQHandler() {
 		
 		// Write a response based on state and incoming message.
 		switch(spi_state) {
-//			case SOUND_VOL_2ND_BYTE:
-//				SPI_write_byte(second_byte(current_sound_level));
-//				spi_state = NORMAL;
-//				break;
-//			case READ_THRESHOLD:
-//				Sound_Detect_set_threshold(spi_read_byte);
-//				spi_state = NORMAL;
-//				SPI_write_byte(spi_read_byte);
-//				break;
 			case READ_TRILATERATION_BOOL:
 				if(spi_read_byte == 1) {
 					AT_start();
@@ -131,10 +122,6 @@ void SPI1_IRQHandler() {
 						SPI_write_byte(AT_get_current_audio_direction());
 						spi_state = NORMAL;
 						break;
-//					case SET_THRESHOLD_CMD:
-//						spi_state = READ_THRESHOLD;
-//						SPI_write_byte(spi_read_byte);
-//						break;
 					case TOGGLE_TRILATERATION_CMD:
 						spi_state = READ_TRILATERATION_BOOL;
 						SPI_write_byte(spi_read_byte);

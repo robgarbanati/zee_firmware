@@ -1,0 +1,41 @@
+Implements the following spi protocol:
+[command] [data0] ... [dataN]
+STM -> N572 
+
+set threshold
+0x01 [threshold_byte]
+
+enable/disable sound detection
+0x02 [enable/disable_boolean (0x00 = disable, 0x01 = enable)]
+
+get sound db.
+0x03 0x00 0x00 (read 12 bit int average of sound amplitude received over past 1/8 second, expressed in raw adc voltage)
+
+clear interrupt. (lower GPIOB 12).
+0x04
+
+N572 -> STM
+interrupt when sound detected. (rise interrupt gpio)
+
+There are 4 demos:
+
+SET_THRESHOLD_DEMO:
+Sets the sound threshold on n572.
+Adjust #define SOUND_THRESHOLD and rerun to update threshold on n572. 
+The higher the value, the more sound is required to turn the n572 LED fully on.
+SOUND_THRESHOLD may be set between 0x00 and 0xff.
+
+
+TOGGLE_DETECTION_DEMO:
+Turns on sound detection on N572 and turns it off every 500 milliseconds.
+
+
+RECEIVE_THRESHOLD_DEMO:
+Requests current sound volume periodically. If that volume is larger than 
+SOUND_THRESHOLD (which can be different from threshold for n572), STM LED
+will turn on.
+
+
+INTERRUPT_LINE_DEMO:
+Will blink the STM LED while interrupt line (AUDIO_TRIANGULATION_BIT0, GPIOB 15) is high.
+Will also tell N572 to lower interrupt line once it sees that the line is high.
